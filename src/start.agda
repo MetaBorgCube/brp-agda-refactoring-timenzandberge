@@ -1,16 +1,20 @@
 module start where
 
-open import Agda.Builtin.Nat public
+-- open import Agda.Builtin.ℕ public
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 open import Relation.Nullary public
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 open import Data.Empty public
-open import Data.Unit public
+-- open import Data.Unit public
 
 
 data Calc : Set where
-  num : Nat → Calc
+  num : ℕ → Calc
   add : Calc → Calc → Calc
   mul : Calc → Calc → Calc
-  _≱_ : Calc → Calc → Calc
+  _lesser_ : Calc → Calc → Calc
   if_then_else_ : Calc → Calc → Calc → Calc
   true : Calc
   false : Calc
@@ -20,7 +24,7 @@ data Calc : Set where
 
 
 data Val : Set where
-  numV : Nat → Val
+  numV : ℕ → Val
   trueV : Val
   falseV : Val
 
@@ -40,10 +44,10 @@ data WtCalc : Calc → Ty → Set where
     → WtCalc (mul e1 e2) number
   □true : WtCalc (true) boolean
   □false : WtCalc (false) boolean
-  □≱ : ∀ {e1 e2}
+  □lesser : ∀ {e1 e2}
     → WtCalc e1 number
     → WtCalc e2 number
-    → WtCalc (e1 ≱ e2) boolean
+    → WtCalc (e1 lesser e2) boolean
   □ite : ∀ {cond e1 e2 type}
     → WtCalc cond boolean
     → WtCalc e1 type
@@ -62,7 +66,7 @@ data WtCalc : Calc → Ty → Set where
     → WtCalc (b1 ∨ b2) boolean
 
 
-_lessThan_ : Nat → Nat → Val
+_lessThan_ : ℕ → ℕ → Val
 zero lessThan zero = falseV
 zero lessThan suc y = trueV
 suc x lessThan zero = falseV
@@ -80,10 +84,10 @@ data _↓_ : Calc → Val → Set where
     → ( _↓_ (mul e1 e2) (numV (v1 * v2)))
   ↓true : (true) ↓ (trueV)
   ↓false : (false) ↓ (falseV)
-  ↓≱ : ∀ {e1 e2}
+  ↓lesser : ∀ {e1 e2}
     → ∀ {v1} → e1 ↓ (numV v1)
     → ∀ {v2} → e2 ↓ (numV v2)
-    → ( _↓_ (e1 ≱ e2) ((v1 lessThan v2)) )
+    → ( _↓_ (e1 lesser e2) ((v1 lessThan v2)) )
   ↓itetrue : ∀ {cond e1 e2}
     → ∀ {v1} → e1 ↓ (v1)
     -- → ∀ {v2} → e2 ↓ (v2)
@@ -176,13 +180,13 @@ v4 : Val
 v4 = trueV
 
 ex4 : Calc
-ex4 = (num 5) ≱ (num 9)
+ex4 = (num 5) lesser (num 9)
 
 ↓ex4 : ex4 ↓ v4
-↓ex4 = ↓≱ ↓num ↓num
+↓ex4 = ↓lesser ↓num ↓num
 
 ty4 : WtCalc ex4 boolean
-ty4 = □≱ □num □num
+ty4 = □lesser □num □num
 
 v5 : Val
 v5 = numV 20
@@ -221,10 +225,10 @@ ty7 : WtCalc ex7 boolean
 ty7 = □⌐ (□∧ □false □true)
 
 exEmpty : Calc
-exEmpty = (num 5) ≱ (false)
+exEmpty = (num 5) lesser (false)
 
 ↓exEmpty : ∀ {v} → ¬ (exEmpty ↓ v)
-↓exEmpty (↓≱ ↓num ())
+↓exEmpty (↓lesser ↓num ())
 
 exEmpty2 : Calc
 exEmpty2 = ⌐ (num 8)
@@ -251,7 +255,7 @@ dne : Calc → Calc
 dne (num x) = num x
 dne (add c g) = add (dne c) (dne g)
 dne (mul c g) = mul (dne c) (dne g)
-dne (c ≱ g) = ((dne c) ≱ (dne g))
+dne (c lesser g) = ((dne c) lesser (dne g))
 dne (if c then one else two) = if dne c then dne one else dne two
 dne true = true
 dne false = false
@@ -259,7 +263,7 @@ dne (⌐ (⌐ c)) = dne c
 dne (⌐ (num x)) = ⌐ (num x)
 dne (⌐ (add c g)) = ⌐ ( add (dne c) (dne g) )
 dne (⌐ (mul c g)) = ⌐ ( mul (dne c) (dne g) )
-dne (⌐ (c ≱ g)) = ⌐ (dne c ≱ dne g)
+dne (⌐ (c lesser g)) = ⌐ (dne c lesser dne g)
 dne (⌐ (if c then e1 else e2)) = ⌐ (if (dne c) then (dne e1) else (dne e2))
 dne (⌐ true)  = ⌐ true
 dne (⌐ false) = ⌐ false
@@ -275,8 +279,8 @@ sameType (add c c₁) number (□add p p₁) = □add (sameType c number p) (sam
 sameType (add c c₁) boolean ()
 sameType (mul c c₁) number (□mul p p₁) = □mul (sameType c number p) (sameType c₁ number p₁)
 sameType (mul c c₁) boolean ()
-sameType (c ≱ c₁) number ()
-sameType (c ≱ c₁) boolean (□≱ p p₁) = □≱ (sameType c number p) (sameType c₁ number p₁)
+sameType (c lesser c₁) number ()
+sameType (c lesser c₁) boolean (□lesser p p₁) = □lesser (sameType c number p) (sameType c₁ number p₁)
 sameType (if c then c₁ else c₂) number (□ite p p₁ p₂) = □ite (sameType c boolean p) (sameType c₁ number p₁) (sameType c₂ number p₂)
 sameType (if c then c₁ else c₂) boolean (□ite p p₁ p₂) = □ite (sameType c boolean p) (sameType c₁ boolean p₁) (sameType c₂ boolean p₂)
 sameType true number ()
@@ -284,7 +288,7 @@ sameType true boolean □true = □true
 sameType false number ()
 sameType false boolean □false = □false
 sameType (⌐ c) number ()
-sameType (⌐ (c ≱ c₁)) boolean (□⌐ p) = □⌐ (sameType (c ≱ c₁) boolean p)
+sameType (⌐ (c lesser c₁)) boolean (□⌐ p) = □⌐ (sameType (c lesser c₁) boolean p)
 sameType (⌐ (if c then c₁ else c₂)) boolean (□⌐ p) = □⌐ (sameType (if c then c₁ else c₂) boolean p)
 sameType (⌐ true) boolean (□⌐ p) = □⌐ p
 sameType (⌐ false) boolean (□⌐ p) = □⌐ p
@@ -303,7 +307,7 @@ sameValue (↓add p p₁) = ↓add (sameValue p) (sameValue p₁)
 sameValue (↓mul p p₁) = ↓mul (sameValue p) (sameValue p₁)
 sameValue ↓true = ↓true
 sameValue ↓false = ↓false
-sameValue (↓≱ p p₁) = ↓≱ (sameValue p) (sameValue p₁)
+sameValue (↓lesser p p₁) = ↓lesser (sameValue p) (sameValue p₁)
 sameValue (↓itetrue p p₁) = ↓itetrue (sameValue p) (sameValue p₁)
 sameValue (↓itefalse p p₁) = ↓itefalse (sameValue p) (sameValue p₁)
 sameValue (↓andTrue p p₁) = ↓andTrue (sameValue p) (sameValue p₁)
@@ -314,97 +318,119 @@ sameValue (↓orTrue p p₁) = ↓orTrue (sameValue p) (sameValue p₁)
 sameValue (↓orFalseFirst p p₁) = ↓orFalseFirst (sameValue p) (sameValue p₁)
 sameValue (↓orFalseSecond p p₁) = ↓orFalseSecond (sameValue p) (sameValue p₁)
 sameValue (↓orFalseBoth p p₁) = ↓orFalseBoth (sameValue p) (sameValue p₁)
-sameValue {⌐ (e1 ≱ e2)} {.falseV} (↓notTrue p) = ↓notTrue (sameValue p)
+sameValue {⌐ (e1 lesser e2)} {.falseV} (↓notTrue p) = ↓notTrue (sameValue p)
 sameValue {⌐ true} {.falseV} (↓notTrue p) = ↓notTrue p
 sameValue {⌐ (e1 ∧ e2)} {.falseV} (↓notTrue p) = ↓notTrue (sameValue p)
 sameValue {⌐ (e1 ∨ e2)} (↓notTrue p) = ↓notTrue (sameValue p)
 sameValue {⌐ (if e1 then e2 else e3)} {.falseV} (↓notTrue p) = ↓notTrue (sameValue p)
-sameValue {⌐ (⌐ e1)}  (↓notTrue (↓notFalse p)) = sameValue p
-sameValue {⌐ (e1 ≱ e2)} (↓notFalse p) = ↓notFalse (sameValue p)
+sameValue {⌐ (e1 lesser e2)} (↓notFalse p) = ↓notFalse (sameValue p)
 sameValue {⌐ (if e1 then e2 else e3)} (↓notFalse p) = ↓notFalse (sameValue p)
 sameValue {⌐ false} (↓notFalse p) = ↓notFalse p
-sameValue {⌐ (⌐ e1)} (↓notFalse (↓notTrue p)) = sameValue p
 sameValue {⌐ (e1 ∧ e2)} (↓notFalse p) = ↓notFalse (sameValue p)
 sameValue {⌐ (e1 ∨ e2)} (↓notFalse p) = ↓notFalse (sameValue p)
+sameValue {⌐ (⌐ e1)} (↓notTrue (↓notFalse p)) = sameValue p
+sameValue {⌐ (⌐ e1)} (↓notFalse (↓notTrue p)) = sameValue p
 
 
-data hasNoDoubleNeg : Calc → Set where
-  noNnum : ∀ {n} → hasNoDoubleNeg ( num n )
-  noNadd : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg (add e1 e2)
-  noNmul : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg (mul e1 e2)
-  noN≱ : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg (e1 ≱ e2)
-  noNif_nothen_noelse_ : ∀ {cond e1 e2}
-    → hasNoDoubleNeg cond
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg (if cond then e1 else e2)
-  noNtrue : hasNoDoubleNeg true
-  noNfalse : hasNoDoubleNeg false
-  noN∧ : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg (e1 ∧ e2)
-  noN∨ : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg (e1 ∨ e2)
-  oonoNnum : ∀ {n} → hasNoDoubleNeg ( ⌐ ( num n ))
-  oonoNadd : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg ( ⌐ (add e1 e2))
-  oonoNmul : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg ( ⌐ (mul e1 e2))
-  oonoN≱ : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg ( ⌐ (e1 ≱ e2))
-  oonoNif_nothen_noelse_ : ∀ {cond e1 e2}
-    → hasNoDoubleNeg cond
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg ( ⌐ (if cond then e1 else e2))
-  oonoNtrue : hasNoDoubleNeg (⌐ true)
-  oonoNfalse : hasNoDoubleNeg (⌐ false)
-  oonoN∧ : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg ( ⌐ (e1 ∧ e2))
-  oonoN∨ : ∀ {e1 e2}
-    → hasNoDoubleNeg e1
-    → hasNoDoubleNeg e2
-    → hasNoDoubleNeg ( ⌐ (e1 ∨ e2))
+#double⌐ : Calc → ℕ
+#double⌐ (num x) = zero
+#double⌐ (add x1 x2) = #double⌐ x1 + #double⌐ x2
+#double⌐ (mul x1 x2) = #double⌐ x1 + #double⌐ x2
+#double⌐ (x1 lesser x2) = #double⌐ x1 + #double⌐ x2
+#double⌐ (if x then x1 else x2) = #double⌐ x1 + #double⌐ x2 + #double⌐ x
+#double⌐ true = zero
+#double⌐ false = zero
+#double⌐ (x1 ∧ x2) = #double⌐ x1 + #double⌐ x2
+#double⌐ (x1 ∨ x2) = #double⌐ x1 + #double⌐ x2
+#double⌐ (⌐ (num x)) = zero
+#double⌐ (⌐ (add x1 x2)) = #double⌐ x1 + #double⌐ x2
+#double⌐ (⌐ (mul x1 x2)) = #double⌐ x1 + #double⌐ x2
+#double⌐ (⌐ (x1 lesser x2)) = #double⌐ x1 + #double⌐ x2
+#double⌐ (⌐ (if x then x1 else x2)) = #double⌐ x1 + #double⌐ x2 + #double⌐ x
+#double⌐ (⌐ (true)) = zero
+#double⌐ (⌐ (false)) = zero
+#double⌐ (⌐ (x1 ∧ x2)) = #double⌐ x1 + #double⌐ x2
+#double⌐ (⌐ (x1 ∨ x2)) = #double⌐ x1 + #double⌐ x2
+#double⌐ (⌐ (⌐ x)) = suc (#double⌐ x)
 
-dneNoDoubleNeg : ( c : Calc ) → hasNoDoubleNeg (dne c)
-dneNoDoubleNeg (num x) = noNnum
-dneNoDoubleNeg (add x x₁) = noNadd (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (mul x x₁) = noNmul (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (x ≱ x₁) = noN≱ (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (if x then x₁ else x₂) = noNif dneNoDoubleNeg x nothen dneNoDoubleNeg x₁ noelse dneNoDoubleNeg x₂
-dneNoDoubleNeg true = noNtrue
-dneNoDoubleNeg false = noNfalse
-dneNoDoubleNeg (⌐ (num x)) = oonoNnum
-dneNoDoubleNeg (⌐ (add x x₁)) = oonoNadd (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (⌐ (mul x x₁)) = oonoNmul (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (⌐ (x ≱ x₁)) = oonoN≱ (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (⌐ (if x then x₁ else x₂)) = oonoNif dneNoDoubleNeg x nothen dneNoDoubleNeg x₁ noelse dneNoDoubleNeg x₂
-dneNoDoubleNeg (⌐ true) = oonoNtrue
-dneNoDoubleNeg (⌐ false) = oonoNfalse
--- dneNoDoubleNeg (⌐ (⌐ x)) = dneNoDoubleNeg x
-dneNoDoubleNeg (⌐ (x ∧ x₁)) = oonoN∧ (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (⌐ (x ∨ x₁)) = oonoN∨ (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (x ∧ x₁) = noN∧ (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
-dneNoDoubleNeg (x ∨ x₁) = noN∨ (dneNoDoubleNeg x) (dneNoDoubleNeg x₁)
++assoc : (x y z : ℕ) → x + (y + z) ≡ (x + y) + z
++assoc zero y z = refl
++assoc (suc x) y z = begin
+    (suc x) + (y + z)
+  ≡⟨ refl ⟩
+    suc (x + (y + z))
+  ≡⟨ cong (suc) ( +assoc x y z) ⟩
+    suc ((x + y) + z)
+  ∎
+
+
+dneNoDoubleNeg : (c : Calc) → (#double⌐ (dne c)) ≡ zero
+dneNoDoubleNeg (num x) = refl
+dneNoDoubleNeg (add c c₁) =
+  begin
+    #double⌐ (dne c) + #double⌐ (dne c₁)
+  ≡⟨ cong ( _+ (#double⌐ (dne c₁))) (dneNoDoubleNeg c ) ⟩
+    zero + #double⌐ (dne c₁)
+  ≡⟨ dneNoDoubleNeg c₁ ⟩
+    zero
+  ∎
+dneNoDoubleNeg (mul c c₁) =
+  begin
+    #double⌐ (dne c) + #double⌐ (dne c₁)
+  ≡⟨ cong ( _+ (#double⌐ (dne c₁))) (dneNoDoubleNeg c ) ⟩
+    zero + #double⌐ (dne c₁)
+  ≡⟨ dneNoDoubleNeg c₁ ⟩
+    zero
+  ∎
+dneNoDoubleNeg (c lesser c₁) =
+  begin
+    #double⌐ (dne c) + #double⌐ (dne c₁)
+  ≡⟨ cong ( _+ (#double⌐ (dne c₁))) (dneNoDoubleNeg c ) ⟩
+    zero + #double⌐ (dne c₁)
+  ≡⟨ dneNoDoubleNeg c₁ ⟩
+    zero
+  ∎
+dneNoDoubleNeg (if c then c₁ else c₂) =
+  begin
+    ( #double⌐ (dne c₁) +  #double⌐ (dne c₂) ) + #double⌐ (dne c)
+  ≡⟨ sym (+assoc   (#double⌐ (dne c₁) ) ( #double⌐ (dne c₂) )  (#double⌐ (dne c) ) ) ⟩
+     #double⌐ (dne c₁) + ( #double⌐ (dne c₂)  + #double⌐ (dne c) )
+  ≡⟨ cong ( _+ (( #double⌐ (dne c₂)  + #double⌐ (dne c) ))) (dneNoDoubleNeg c₁ ) ⟩
+    zero + ( #double⌐ (dne c₂)  + #double⌐ (dne c) )
+  ≡⟨ refl ⟩
+    #double⌐ (dne c₂)  + #double⌐ (dne c) 
+  ≡⟨ cong ( _+ (#double⌐ (dne c)) ) (dneNoDoubleNeg c₂)  ⟩
+    zero + #double⌐ (dne c) 
+  ≡⟨ dneNoDoubleNeg c ⟩
+    zero
+  ∎
+dneNoDoubleNeg true = refl
+dneNoDoubleNeg false = refl
+dneNoDoubleNeg (⌐ (num x)) = refl
+dneNoDoubleNeg (⌐ (add c c₁)) = dneNoDoubleNeg (add c c₁)
+dneNoDoubleNeg (⌐ (mul c c₁)) = dneNoDoubleNeg (mul c c₁)
+dneNoDoubleNeg (⌐ (c lesser c₁)) = dneNoDoubleNeg (c lesser c₁)
+dneNoDoubleNeg (⌐ (if c then c₁ else c₂)) = dneNoDoubleNeg (if c then c₁ else c₂)
+dneNoDoubleNeg (⌐ true) = refl
+dneNoDoubleNeg (⌐ false) = refl
+dneNoDoubleNeg (⌐ (⌐ c)) = dneNoDoubleNeg c
+dneNoDoubleNeg (⌐ (c ∧ c₁)) = dneNoDoubleNeg (c ∧ c₁)
+dneNoDoubleNeg (⌐ (c ∨ c₁)) = dneNoDoubleNeg (c ∨ c₁)
+dneNoDoubleNeg (c ∧ c₁) =
+  begin
+    #double⌐ (dne c) + #double⌐ (dne c₁)
+  ≡⟨ cong ( _+ (#double⌐ (dne c₁))) (dneNoDoubleNeg c ) ⟩
+    zero + #double⌐ (dne c₁)
+  ≡⟨ dneNoDoubleNeg c₁ ⟩
+    zero
+  ∎
+dneNoDoubleNeg (c ∨ c₁) =
+  begin
+    #double⌐ (dne c) + #double⌐ (dne c₁)
+  ≡⟨ cong ( _+ (#double⌐ (dne c₁))) (dneNoDoubleNeg c ) ⟩
+    zero + #double⌐ (dne c₁)
+  ≡⟨ dneNoDoubleNeg c₁ ⟩
+    zero
+  ∎
 
 
