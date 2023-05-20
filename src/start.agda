@@ -257,8 +257,8 @@ dne (add c g) = add (dne c) (dne g)
 dne (mul c g) = mul (dne c) (dne g)
 dne (c lesser g) = ((dne c) lesser (dne g))
 dne (if c then one else two) = if dne c then dne one else dne two
-dne true = true
-dne false = false
+-- dne true = true
+-- dne false = false
 dne (⌐ (⌐ c)) = dne c
 dne (⌐ (num x)) = ⌐ (num x)
 dne (⌐ (add c g)) = ⌐ ( add (dne c) (dne g) )
@@ -271,6 +271,7 @@ dne (⌐ (c ∧ g)) = ⌐ ((dne c) ∧ (dne g))
 dne (⌐ (c ∨ g)) = ⌐ ((dne c) ∨ (dne g))
 dne (c ∧ g) = dne c ∧ dne g
 dne (c ∨ g) = dne c ∨ dne g
+dne b = b
 
 sameType : (c : Calc) → (t : Ty) → ( WtCalc c t ) → (WtCalc (dne c) t)
 sameType (num x) number □num = □num
