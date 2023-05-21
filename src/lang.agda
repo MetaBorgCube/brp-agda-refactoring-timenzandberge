@@ -19,20 +19,23 @@ infixl 5 _,_
 infixr 7 _𝕋⇒_
 
 infix  5 ƛ_
+infix  4 _>>=_
 -- infix  5 μ_
 -- infix  5 Y_
 infixl 7 _·_
 -- infix  8 `suc_
 -- infix  9 `_
 infix  9 S_
+infix  100 num
 infix  200 #_
 infix  2 _—→_
 
 
 data Ty : Set where
-  𝕋𝕟   : Ty
-  𝕋𝕓   : Ty
-  _𝕋⇒_ : Ty → Ty → Ty
+  𝕋𝕟     : Ty
+  𝕋𝕓     : Ty
+  _𝕋⇒_   : Ty → Ty → Ty
+  𝕋maybe : Ty
 
 data Ctx : Set where
   ∅   : Ctx
@@ -94,20 +97,42 @@ data _⊢_ : Ctx → Ty → Set where
     → Γ ⊢ A -- if False
     → Γ ⊢ A
 
+  Nothing : ∀ {Γ}
+    → Γ ⊢ 𝕋maybe
+
+  Just : ∀ {Γ}
+    → Γ ⊢ 𝕋𝕟
+    → Γ ⊢ 𝕋maybe
+  
+  _>>=_ : ∀ {Γ A B}
+    → Γ ⊢ 𝕋maybe
+    → Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe
+    → Γ ⊢ 𝕋maybe
+
+  do<-_⁀_ : ∀ {Γ A B}
+    → Γ ⊢ 𝕋maybe
+    → Γ , 𝕋𝕟 ⊢ 𝕋maybe
+    → Γ ⊢ 𝕋maybe
+
   -- -- fixpoint Y combinator
   -- Y_ : ∀ {Γ A}
   --   → Γ , A ⊢ A
   --   → Γ ⊢ A
+return = Just
 
 data Val : ∀ {Γ A} → Γ ⊢ A → Set where
-  𝕍𝕟     : ∀ {Γ n}
+  𝕍𝕟       : ∀ {Γ n}
     → Val (num {Γ} n)
-  𝕍true  : ∀ {Γ}
+  𝕍true    : ∀ {Γ}
     → Val (true  {Γ})
-  𝕍false : ∀ {Γ}
+  𝕍false   : ∀ {Γ}
     → Val (false {Γ})
-  𝕍clos  : ∀ {Γ A B} → {N : Γ , A ⊢ B}
+  𝕍clos    : ∀ {Γ A B} → {N : Γ , A ⊢ B}
     → Val (ƛ N)
+  𝕍nothing : ∀ {Γ}
+    → Val (Nothing {Γ})
+  𝕍just    : ∀ {Γ A} → {N : Γ , A ⊢ 𝕋𝕟}
+    → Val (Just N)
 
 {- Helper functions
 -}
@@ -152,15 +177,19 @@ ext ρ (S x)  =  S (ρ x)
 rename : ∀ {Γ Δ}
   → (∀ {A} → Γ ∋ A → Δ ∋ A)
   → (∀ {A} → Γ ⊢ A → Δ ⊢ A)
-rename ρ true            = true
-rename ρ false           = false
-rename ρ (ƛ N)           = ƛ (rename (ext ρ) N)
-rename ρ (¿ L ⦅ M ∥ N ⦆) = ¿ (rename ρ L) ⦅ (rename ρ M) ∥ (rename ρ N) ⦆
-rename ρ (num M)         = num M
-rename ρ (Term x)        = Term (ρ x)
-rename ρ (L ★ M)         = (rename ρ L) ★ (rename ρ M)
-rename ρ (L ⊹ M)         = (rename ρ L) ⊹ (rename ρ M)
-rename ρ (L · M)         = (rename ρ L) · (rename ρ M)
+rename ρ true              = true
+rename ρ false             = false
+rename ρ (ƛ N)             = ƛ (rename (ext ρ) N)
+rename ρ (¿ L ⦅ M ∥ N ⦆)   = ¿ (rename ρ L) ⦅ (rename ρ M) ∥ (rename ρ N) ⦆
+rename ρ (num M)           = num M
+rename ρ (Term x)          = Term (ρ x)
+rename ρ (L ★ M)           = (rename ρ L) ★ (rename ρ M)
+rename ρ (L ⊹ M)           = (rename ρ L) ⊹ (rename ρ M)
+rename ρ (L · M)           = (rename ρ L) · (rename ρ M)
+rename ρ Nothing           = Nothing
+rename ρ (Just c)          = Just (rename ρ c)
+rename ρ (f >>= m)         = (rename ρ f) >>= (rename ρ m)
+rename ρ (do<- m ⁀ f) = do<- (rename ρ m) ⁀ (rename (ext ρ) f)
 -- rename ρ (μ N)          =  μ (rename (ext ρ) N)
 
 exts : ∀ {Γ Δ}
@@ -181,6 +210,10 @@ subst σ (Term x)         = σ x
 subst σ (L ★ M)          = (subst σ L) ★ (subst σ M)
 subst σ (L ⊹ M)          = (subst σ L) ⊹ (subst σ M)
 subst σ (L · M)          = (subst σ L) · (subst σ M)
+subst σ Nothing          = Nothing
+subst σ (Just c)         = Just (subst σ c)
+subst σ (f >>= m)        = (subst σ f) >>= (subst σ m)
+subst σ (do<- m ⁀ f) = do<- (subst σ m) ⁀ (subst (exts σ) f)
 -- subst σ (μ N)          =  μ (subst (exts σ) N)
 
 -- Substitution
@@ -304,6 +337,10 @@ progress (¿ C ⦅ T ∥ F ⦆ ) with progress C
 ...    | step C—→C′                     = step (ξ-¿ C—→C′)
 ...    | done 𝕍true                     = step (β-¿true)
 ...    | done 𝕍false                    = step (β-¿false)
+progress Nothing                        = done 𝕍nothing
+progress (Just c)                       = {! !}
+progress (f >>= m)                      = {! !}
+progress {.𝕋maybe} (do<- m ⁀ f)         = {! !}
 -- progress (`suc M) with progress M
 -- ...    | step M—→M′                     =  step (ξ-suc M—→M′)
 -- ...    | done VM                        =  done (V-suc VM)
@@ -353,3 +390,22 @@ plus = ƛ (ƛ ( ( # 1 ) ⊹  # 0 ))
     ξ-·₁ (β-ƛ 𝕍𝕟) ⟩
     (ƛ (num 2 ⊹ (Term Z))) · num 2 —→⟨ β-ƛ 𝕍𝕟 ⟩
     (num 2 ⊹ num 2) —→⟨ δ-⊹ ⟩ num 4 ∎)
+
+
+-- monadplusone : ∅ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe
+-- monadplusone = ƛ ( Just ( (num 1) ⊹ # 0 ))
+
+bindEx : ∅ ⊢ 𝕋maybe
+bindEx = (Just (num 1)) >>= ƛ (Just (num 1 ⊹ # 0 )) 
+
+doEx : ∅ ⊢ 𝕋maybe
+doEx =
+  do<- Just (num 1) ⁀
+  Just ((num 1) ⊹ # 0)
+
+doChain : ∅ ⊢ 𝕋maybe
+doChain =
+  do<- Just (num 1) ⁀
+  do<- Just (num 1) ⁀
+  Just ( # 1 ⊹ # 0)
+
