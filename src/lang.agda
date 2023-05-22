@@ -104,12 +104,12 @@ data _⊢_ : Ctx → Ty → Set where
     → Γ ⊢ 𝕋𝕟
     → Γ ⊢ 𝕋maybe
   
-  _>>=_ : ∀ {Γ A B}
+  _>>=_ : ∀ {Γ}
     → Γ ⊢ 𝕋maybe
     → Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe
     → Γ ⊢ 𝕋maybe
 
-  do<-_⁀_ : ∀ {Γ A B}
+  do<-_⁀_ : ∀ {Γ}
     → Γ ⊢ 𝕋maybe
     → Γ , 𝕋𝕟 ⊢ 𝕋maybe
     → Γ ⊢ 𝕋maybe
@@ -118,7 +118,7 @@ data _⊢_ : Ctx → Ty → Set where
   -- Y_ : ∀ {Γ A}
   --   → Γ , A ⊢ A
   --   → Γ ⊢ A
-return = Just
+-- return = Just
 
 data Val : ∀ {Γ A} → Γ ⊢ A → Set where
   𝕍𝕟       : ∀ {Γ n}
@@ -131,8 +131,10 @@ data Val : ∀ {Γ A} → Γ ⊢ A → Set where
     → Val (ƛ N)
   𝕍nothing : ∀ {Γ}
     → Val (Nothing {Γ})
-  𝕍just    : ∀ {Γ A} → {N : Γ , A ⊢ 𝕋𝕟}
-    → Val (Just N)
+  -- 𝕍just    : ∀ {Γ A} → {N : Γ , A ⊢ 𝕋𝕟}
+  --   → Val (Just N)
+  𝕍just    : ∀ {Γ n}
+    → Val (Just {Γ} (num n))
 
 {- Helper functions
 -}
@@ -277,6 +279,36 @@ data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
     → V ★ L —→ V ★ L′
   δ-★ : ∀ {Γ c d}
     → num {Γ} c ★ num d —→ num (c * d)
+  -- Bind operator
+  ξ->>=₁ : ∀ {Γ} {L L′ : Γ ⊢ 𝕋maybe} {M : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
+    → L —→ L′
+    → L >>= M —→ L′ >>= M
+  ξ->>=₂ : ∀ {Γ} {V : Γ ⊢ 𝕋maybe } { M M′ : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
+    → Val V
+    → M —→ M′
+    → V >>= M —→ V >>= M′
+  β->>=Nothing : ∀ {Γ} {F : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe }
+    → Nothing >>= (F ) —→ Nothing
+  β->>=Just : ∀ {Γ} {F : Γ , 𝕋𝕟 ⊢ 𝕋maybe } {M : Γ ⊢ 𝕋𝕟 }
+    → Val M
+    → (Just M) >>= (ƛ F) —→ (F [ M ])
+  -- Do notation
+  ξ-do₁ : ∀ {Γ} {L L′ : Γ ⊢ 𝕋maybe} {M : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+    → L —→ L′
+    → do<- L ⁀ M —→ do<- L′ ⁀ M
+  -- ξ-do₂ : ∀ {Γ} {V : Γ ⊢ 𝕋maybe } { M M′ : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+  --   → Val V
+  --   → M —→ M′
+  --   → do<- V ⁀ M —→ do<- V ⁀ M′
+  β-doNothing : ∀ {Γ} {F : Γ , 𝕋𝕟 ⊢ 𝕋maybe }
+    → do<- Nothing ⁀ (F) —→ Nothing
+  β-doJust : ∀ {Γ} {F : Γ , 𝕋𝕟 ⊢ 𝕋maybe } {M : Γ ⊢ 𝕋𝕟 }
+    → Val M
+    → do<- (Just M) ⁀ (F) —→ (F [ M ])
+  -- Just reduction
+  ξ-JustInternal : ∀ {Γ} {M M′ : Γ ⊢ 𝕋𝕟}
+    → M —→ M′
+    → Just M —→ Just M′
 
   -- apply fixpoint function
   -- β-μ : ∀ {Γ A} {N : Γ , A ⊢ A}
@@ -338,9 +370,19 @@ progress (¿ C ⦅ T ∥ F ⦆ ) with progress C
 ...    | done 𝕍true                     = step (β-¿true)
 ...    | done 𝕍false                    = step (β-¿false)
 progress Nothing                        = done 𝕍nothing
-progress (Just c)                       = {! !}
-progress (f >>= m)                      = {! !}
-progress {.𝕋maybe} (do<- m ⁀ f)         = {! !}
+progress (Just N) with progress N
+...    | step x = step (ξ-JustInternal x)
+...    | done 𝕍𝕟 = done 𝕍just
+progress (M >>= F) with progress M
+...    | step M—→M′                     = step (ξ->>=₁ M—→M′)
+...    | done 𝕍nothing                  = step (β->>=Nothing )
+...    | done (𝕍just) with progress F
+...        | step x                     = step (ξ->>=₂ 𝕍just x)
+...        | done 𝕍clos                 = step (β->>=Just 𝕍𝕟)
+progress (do<- M ⁀ F) with progress M
+...    | step M—→M′                     = step (ξ-do₁ M—→M′)
+...    | done 𝕍nothing                  = step (β-doNothing)
+...    | done (𝕍just)                   = step (β-doJust 𝕍𝕟)
 -- progress (`suc M) with progress M
 -- ...    | step M—→M′                     =  step (ξ-suc M—→M′)
 -- ...    | done VM                        =  done (V-suc VM)
@@ -409,3 +451,13 @@ doChain =
   do<- Just (num 1) ⁀
   Just ( # 1 ⊹ # 0)
 
+
+evalbindex : bindEx —↠ (Just (num 2))
+evalbindex =
+  (Just (num 1) >>= ƛ Just (num 1 ⊹ (Term Z)) —→⟨ β->>=Just 𝕍𝕟 ⟩
+    Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
+
+evaldoex : doEx —↠ (Just (num 2))
+evaldoex =
+  ((do<- Just (num 1) ⁀ Just (num 1 ⊹ (Term Z))) —→⟨ β-doJust 𝕍𝕟 ⟩
+    Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
