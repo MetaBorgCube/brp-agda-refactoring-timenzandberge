@@ -1,12 +1,13 @@
 module lang where
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; sym; cong; cong-app)
+open Eq using (_≡_; refl; trans; sym; cong; cong-app) public
 -- open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
-open import Data.Empty using (⊥ ; ⊥-elim)
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; _≤?_; z≤n; s≤s)
-open import Relation.Nullary using (¬_)
-open import Relation.Nullary.Decidable using (True ; toWitness)
+open import Data.Empty using (⊥ ; ⊥-elim) public
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; _≤?_; z≤n; s≤s) public
+open import Data.Maybe renaming (_>>=_ to bind) public
+open import Relation.Nullary using (¬_) public
+open import Relation.Nullary.Decidable using (True ; toWitness) public
 
 
 -- TODO(FIX): Clean up these infix operators
@@ -138,18 +139,18 @@ data Val : ∀ {Γ A} → Γ ⊢ A → Set where
 
 {- Helper functions
 -}
+private
+  length : Ctx → ℕ
+  length ∅         = zero
+  length ( Γ , _ ) = suc (length Γ)
 
-length : Ctx → ℕ
-length ∅         = zero
-length ( Γ , _ ) = suc (length Γ)
+  lookup : {Γ : Ctx} → {n : ℕ} → (p : n < length Γ) → Ty
+  lookup {(_ , A)} {zero}    (s≤s z≤n) = A
+  lookup {(Γ , _)} {(suc n)} (s≤s p)   = lookup p
 
-lookup : {Γ : Ctx} → {n : ℕ} → (p : n < length Γ) → Ty
-lookup {(_ , A)} {zero}    (s≤s z≤n) = A
-lookup {(Γ , _)} {(suc n)} (s≤s p)   = lookup p
-
-count : ∀ {Γ} → {n : ℕ} → (p : n < length Γ) → Γ ∋ lookup p
-count {_ , _} {zero}    (s≤s z≤n) = Z
-count {Γ , _} {(suc n)} (s≤s p)   = S (count p)
+  count : ∀ {Γ} → {n : ℕ} → (p : n < length Γ) → Γ ∋ lookup p
+  count {_ , _} {zero}    (s≤s z≤n) = Z
+  count {Γ , _} {(suc n)} (s≤s p)   = S (count p)
 
 {- get the Term `n` declerations back -}
 #_ : ∀ {Γ}
@@ -160,63 +161,65 @@ count {Γ , _} {(suc n)} (s≤s p)   = S (count p)
 
 {- example programs -}
 
-two : ∀ {Γ} → Γ ⊢ 𝕋𝕟
-two = num 2 
+private
+  two : ∀ {Γ} → Γ ⊢ 𝕋𝕟
+  two = num 2 
 
-twoTimesTwo : ∀ {Γ} → Γ ⊢ 𝕋𝕟
-twoTimesTwo = two ★ two
+  twoTimesTwo : ∀ {Γ} → Γ ⊢ 𝕋𝕟
+  twoTimesTwo = two ★ two
 
 {- renaming
 -}
 
--- Extension lemma
-ext : ∀ {Γ Δ}
-  → (∀ {A}   →     Γ ∋ A →     Δ ∋ A)
-  → (∀ {A B} → Γ , B ∋ A → Δ , B ∋ A)
-ext ρ Z      =  Z
-ext ρ (S x)  =  S (ρ x)
+private
+  -- Extension lemma
+  ext : ∀ {Γ Δ}
+    → (∀ {A}   →     Γ ∋ A →     Δ ∋ A)
+    → (∀ {A B} → Γ , B ∋ A → Δ , B ∋ A)
+  ext ρ Z      =  Z
+  ext ρ (S x)  =  S (ρ x)
 
-rename : ∀ {Γ Δ}
-  → (∀ {A} → Γ ∋ A → Δ ∋ A)
-  → (∀ {A} → Γ ⊢ A → Δ ⊢ A)
-rename ρ true              = true
-rename ρ false             = false
-rename ρ (ƛ N)             = ƛ (rename (ext ρ) N)
-rename ρ (¿ L ⦅ M ∥ N ⦆)   = ¿ (rename ρ L) ⦅ (rename ρ M) ∥ (rename ρ N) ⦆
-rename ρ (num M)           = num M
-rename ρ (Term x)          = Term (ρ x)
-rename ρ (L ★ M)           = (rename ρ L) ★ (rename ρ M)
-rename ρ (L ⊹ M)           = (rename ρ L) ⊹ (rename ρ M)
-rename ρ (L · M)           = (rename ρ L) · (rename ρ M)
-rename ρ Nothing           = Nothing
-rename ρ (Just c)          = Just (rename ρ c)
-rename ρ (f >>= m)         = (rename ρ f) >>= (rename ρ m)
-rename ρ (do<- m ⁀ f) = do<- (rename ρ m) ⁀ (rename (ext ρ) f)
--- rename ρ (μ N)          =  μ (rename (ext ρ) N)
+  rename : ∀ {Γ Δ}
+    → (∀ {A} → Γ ∋ A → Δ ∋ A)
+    → (∀ {A} → Γ ⊢ A → Δ ⊢ A)
+  rename ρ true              = true
+  rename ρ false             = false
+  rename ρ (ƛ N)             = ƛ (rename (ext ρ) N)
+  rename ρ (¿ L ⦅ M ∥ N ⦆)   = ¿ (rename ρ L) ⦅ (rename ρ M) ∥ (rename ρ N) ⦆
+  rename ρ (num M)           = num M
+  rename ρ (Term x)          = Term (ρ x)
+  rename ρ (L ★ M)           = (rename ρ L) ★ (rename ρ M)
+  rename ρ (L ⊹ M)           = (rename ρ L) ⊹ (rename ρ M)
+  rename ρ (L · M)           = (rename ρ L) · (rename ρ M)
+  rename ρ Nothing           = Nothing
+  rename ρ (Just c)          = Just (rename ρ c)
+  rename ρ (f >>= m)         = (rename ρ f) >>= (rename ρ m)
+  rename ρ (do<- m ⁀ f) = do<- (rename ρ m) ⁀ (rename (ext ρ) f)
+  -- rename ρ (μ N)          =  μ (rename (ext ρ) N)
 
-exts : ∀ {Γ Δ}
-  → (∀ {A}   →     Γ ∋ A →     Δ ⊢ A)
-  → (∀ {A B} → Γ , B ∋ A → Δ , B ⊢ A)
-exts σ Z      =  Term Z
-exts σ (S x)  =  rename S_ (σ x)
+  exts : ∀ {Γ Δ}
+    → (∀ {A}   →     Γ ∋ A →     Δ ⊢ A)
+    → (∀ {A B} → Γ , B ∋ A → Δ , B ⊢ A)
+  exts σ Z      =  Term Z
+  exts σ (S x)  =  rename S_ (σ x)
 
-subst : ∀ {Γ Δ}
-  → (∀ {A} → Γ ∋ A → Δ ⊢ A)
-  → (∀ {A} → Γ ⊢ A → Δ ⊢ A)
-subst σ true             = true
-subst σ false            = false
-subst σ (ƛ N)            = ƛ (subst (exts σ) N)
-subst σ (¿ L ⦅ M ∥ N ⦆ ) = ¿ (subst σ L) ⦅ (subst σ M) ∥ (subst σ N) ⦆
-subst σ (num M)          = (num M)
-subst σ (Term x)         = σ x
-subst σ (L ★ M)          = (subst σ L) ★ (subst σ M)
-subst σ (L ⊹ M)          = (subst σ L) ⊹ (subst σ M)
-subst σ (L · M)          = (subst σ L) · (subst σ M)
-subst σ Nothing          = Nothing
-subst σ (Just c)         = Just (subst σ c)
-subst σ (f >>= m)        = (subst σ f) >>= (subst σ m)
-subst σ (do<- m ⁀ f) = do<- (subst σ m) ⁀ (subst (exts σ) f)
--- subst σ (μ N)          =  μ (subst (exts σ) N)
+  subst : ∀ {Γ Δ}
+    → (∀ {A} → Γ ∋ A → Δ ⊢ A)
+    → (∀ {A} → Γ ⊢ A → Δ ⊢ A)
+  subst σ true             = true
+  subst σ false            = false
+  subst σ (ƛ N)            = ƛ (subst (exts σ) N)
+  subst σ (¿ L ⦅ M ∥ N ⦆ ) = ¿ (subst σ L) ⦅ (subst σ M) ∥ (subst σ N) ⦆
+  subst σ (num M)          = (num M)
+  subst σ (Term x)         = σ x
+  subst σ (L ★ M)          = (subst σ L) ★ (subst σ M)
+  subst σ (L ⊹ M)          = (subst σ L) ⊹ (subst σ M)
+  subst σ (L · M)          = (subst σ L) · (subst σ M)
+  subst σ Nothing          = Nothing
+  subst σ (Just c)         = Just (subst σ c)
+  subst σ (f >>= m)        = (subst σ f) >>= (subst σ m)
+  subst σ (do<- m ⁀ f) = do<- (subst σ m) ⁀ (subst (exts σ) f)
+  -- subst σ (μ N)          =  μ (subst (exts σ) N)
 
 -- Substitution
 -- substitutes the innermost free variable with the given term
@@ -296,10 +299,6 @@ data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
   ξ-do₁ : ∀ {Γ} {L L′ : Γ ⊢ 𝕋maybe} {M : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
     → L —→ L′
     → do<- L ⁀ M —→ do<- L′ ⁀ M
-  -- ξ-do₂ : ∀ {Γ} {V : Γ ⊢ 𝕋maybe } { M M′ : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
-  --   → Val V
-  --   → M —→ M′
-  --   → do<- V ⁀ M —→ do<- V ⁀ M′
   β-doNothing : ∀ {Γ} {F : Γ , 𝕋𝕟 ⊢ 𝕋maybe }
     → do<- Nothing ⁀ (F) —→ Nothing
   β-doJust : ∀ {Γ} {F : Γ , 𝕋𝕟 ⊢ 𝕋maybe } {M : Γ ⊢ 𝕋𝕟 }
@@ -422,42 +421,48 @@ eval (gas (suc m)) L with progress L
 ...    | steps M—↠N fin                  =  steps (L —→⟨ L—→M ⟩ M—↠N) fin
 
 
-
-plus : ∅ ⊢ 𝕋𝕟 𝕋⇒ 𝕋𝕟 𝕋⇒ 𝕋𝕟
-plus = ƛ (ƛ ( ( # 1 ) ⊹  # 0 ))
-
-2+2=4 : plus · two · two —↠ ( num 4 )
-2+2=4 = begin
-  ((ƛ (ƛ ((Term (S Z)) ⊹ (Term Z)))) · num 2 · num 2 —→⟨
-    ξ-·₁ (β-ƛ 𝕍𝕟) ⟩
-    (ƛ (num 2 ⊹ (Term Z))) · num 2 —→⟨ β-ƛ 𝕍𝕟 ⟩
-    (num 2 ⊹ num 2) —→⟨ δ-⊹ ⟩ num 4 ∎)
+-- stepsToValue : ∀ {A : Ty} → ∀ {L N : ∅ ⊢ A} → (L —↠ N) → (Val N) → Maybe 𝕍clos
+-- stepsToValue (x) = ?
 
 
--- monadplusone : ∅ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe
--- monadplusone = ƛ ( Just ( (num 1) ⊹ # 0 ))
+private
+  {- Example programs
+  -}
+  plus : ∅ ⊢ 𝕋𝕟 𝕋⇒ 𝕋𝕟 𝕋⇒ 𝕋𝕟
+  plus = ƛ (ƛ ( ( # 1 ) ⊹  # 0 ))
 
-bindEx : ∅ ⊢ 𝕋maybe
-bindEx = (Just (num 1)) >>= ƛ (Just (num 1 ⊹ # 0 )) 
-
-doEx : ∅ ⊢ 𝕋maybe
-doEx =
-  do<- Just (num 1) ⁀
-  Just ((num 1) ⊹ # 0)
-
-doChain : ∅ ⊢ 𝕋maybe
-doChain =
-  do<- Just (num 1) ⁀
-  do<- Just (num 1) ⁀
-  Just ( # 1 ⊹ # 0)
+  2+2=4 : plus · two · two —↠ ( num 4 )
+  2+2=4 = begin
+    ((ƛ (ƛ ((Term (S Z)) ⊹ (Term Z)))) · num 2 · num 2 —→⟨
+      ξ-·₁ (β-ƛ 𝕍𝕟) ⟩
+      (ƛ (num 2 ⊹ (Term Z))) · num 2 —→⟨ β-ƛ 𝕍𝕟 ⟩
+      (num 2 ⊹ num 2) —→⟨ δ-⊹ ⟩ num 4 ∎)
 
 
-evalbindex : bindEx —↠ (Just (num 2))
-evalbindex =
-  (Just (num 1) >>= ƛ Just (num 1 ⊹ (Term Z)) —→⟨ β->>=Just 𝕍𝕟 ⟩
-    Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
+  -- monadplusone : ∅ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe
+  -- monadplusone = ƛ ( Just ( (num 1) ⊹ # 0 ))
 
-evaldoex : doEx —↠ (Just (num 2))
-evaldoex =
-  ((do<- Just (num 1) ⁀ Just (num 1 ⊹ (Term Z))) —→⟨ β-doJust 𝕍𝕟 ⟩
-    Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
+  bindEx : ∅ ⊢ 𝕋maybe
+  bindEx = (Just (num 1)) >>= ƛ (Just (num 1 ⊹ # 0 )) 
+
+  doEx : ∅ ⊢ 𝕋maybe
+  doEx =
+    do<- Just (num 1) ⁀
+    Just ((num 1) ⊹ # 0)
+
+  doChain : ∅ ⊢ 𝕋maybe
+  doChain =
+    do<- Just (num 1) ⁀
+    do<- Just (num 1) ⁀
+    Just ( # 1 ⊹ # 0)
+
+
+  evalbindex : bindEx —↠ (Just (num 2))
+  evalbindex =
+    (Just (num 1) >>= ƛ Just (num 1 ⊹ (Term Z)) —→⟨ β->>=Just 𝕍𝕟 ⟩
+      Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
+
+  evaldoex : doEx —↠ (Just (num 2))
+  evaldoex =
+    ((do<- Just (num 1) ⁀ Just (num 1 ⊹ (Term Z))) —→⟨ β-doJust 𝕍𝕟 ⟩
+      Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
