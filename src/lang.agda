@@ -137,6 +137,15 @@ data Val : ∀ {Γ A} → Γ ⊢ A → Set where
   𝕍just    : ∀ {Γ n}
     → Val (Just {Γ} (num n))
 
+data Value : Set where
+  num𝕍 : ℕ → Value
+  true𝕍 : Value
+  false𝕍 : Value
+  clos𝕍 : ∀ {Γ A B} → (Γ , A ⊢ B) → Value
+  nothing𝕍 : Value
+  just𝕍 : ℕ → Value
+  
+
 {- Helper functions
 -}
 private
@@ -313,6 +322,55 @@ data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
   -- β-μ : ∀ {Γ A} {N : Γ , A ⊢ A}
   --   → μ N —→ N [ μ N ]
 
+data _↓_ : ∀ {Γ A} → (Γ ⊢ A) → Value → Set where
+  ↓num : ∀ {Γ n} → _↓_ (num {Γ} n) (num𝕍 n)
+  ↓add : ∀ {Γ} {el er : Γ ⊢ 𝕋𝕟}
+    → ∀ {vl} → _↓_ el (num𝕍 vl)
+    → ∀ {vr} → _↓_ er (num𝕍 vr)
+    → _↓_ (el ⊹ er) (num𝕍 (vl + vr))
+  ↓mul : ∀ {Γ} {el er : Γ ⊢ 𝕋𝕟}
+    → ∀ {vl} → _↓_ el (num𝕍 vl)
+    → ∀ {vr} → _↓_ er (num𝕍 vr)
+    → _↓_ (el ⊹ er) (num𝕍 (vl * vr))
+  ↓true : ∀ {Γ} → (true {Γ}) ↓ (true𝕍)
+  ↓false : ∀ {Γ} → (false {Γ}) ↓ (false𝕍)
+  ↓¿true : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
+    → cond ↓ true𝕍
+    → ∀ {v1} → e1 ↓ v1
+    → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v1
+  ↓¿false : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
+    → cond ↓ false𝕍
+    → ∀ {v2} → e2 ↓ v2
+    → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v2
+  ↓lam : ∀ {Γ} {A B : Ty} (el : Γ , A ⊢ B)
+    → ( ƛ (el)) ↓ (clos𝕍 el)
+  ↓app : {Γ : Ctx} {A B : Ty} {el : Γ ⊢ A 𝕋⇒ B} {input : Γ ⊢ A}
+    → ∀ {body : Γ , A ⊢ B} → el ↓ (clos𝕍 body)
+    → ∀ {inv} → input ↓ (inv)
+    → ∀ {val} → (body [ input ] ) ↓ val
+    → (el · input) ↓ val
+  ↓nothing : ∀ {Γ : Ctx} → Nothing {Γ} ↓ nothing𝕍
+  ↓just : ∀ {Γ : Ctx} {expr : Γ ⊢ 𝕋𝕟}
+    → ∀ {n} → expr ↓ (num𝕍 n)
+    → ( Just expr ) ↓ (just𝕍 n )
+  ↓bindJust : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {funct : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
+    → ∀ {n} → monad ↓ (just𝕍 n)
+    → ∀ {body : Γ , 𝕋𝕟 ⊢ 𝕋maybe} → funct ↓ (clos𝕍 body)
+    → ∀ {val} → (body [ (num n) ] ) ↓ val
+    → (monad >>= funct) ↓ val
+  ↓bindNothing : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {funct : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
+    → monad ↓ nothing𝕍
+    → (monad >>= funct) ↓ nothing𝕍
+  ↓doJust : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+    → ∀ {n} → monad ↓ (just𝕍 n)
+    → ∀ {val} → (expr [ (num n) ] ) ↓ val
+    → (do<- monad ⁀ expr) ↓ val
+  ↓doNothing : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+    → monad ↓ nothing𝕍
+    → (do<- monad ⁀ expr) ↓ nothing𝕍
+
+
+
 infix  2 _—↠_
 infix  1 begin_
 infixr 2 _—→⟨_⟩_
@@ -462,7 +520,13 @@ private
     (Just (num 1) >>= ƛ Just (num 1 ⊹ (Term Z)) —→⟨ β->>=Just 𝕍𝕟 ⟩
       Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
 
+  bigstepbindex : bindEx ↓ (just𝕍 2)
+  bigstepbindex = ↓bindJust (↓just ↓num) (↓lam (Just (num 1 ⊹ (Term Z)))) (↓just (↓add ↓num ↓num))
+
   evaldoex : doEx —↠ (Just (num 2))
   evaldoex =
     ((do<- Just (num 1) ⁀ Just (num 1 ⊹ (Term Z))) —→⟨ β-doJust 𝕍𝕟 ⟩
       Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
+
+  bigstepdoex : doEx ↓ (just𝕍 2)
+  bigstepdoex = ↓doJust (↓just ↓num) (↓just (↓add ↓num ↓num))
