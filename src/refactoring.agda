@@ -17,6 +17,22 @@ removeDo (Just L) = Just (removeDo L)
 removeDo (M >>= F) = (removeDo M) >>= (removeDo F)
 removeDo (do<- M ⁀ F) = (removeDo M) >>= (ƛ (removeDo F))
 
+
+removeDoTopLvl : ∀ {A : Ty} → ∅ ⊢ A → ∅ ⊢ A
+removeDoTopLvl (Term x) = Term x
+removeDoTopLvl (ƛ L) = ƛ ( L)
+removeDoTopLvl (L · M) = ( L) · ( M)
+removeDoTopLvl (num x) = num x
+removeDoTopLvl (L ⊹ M) = ( L) ⊹ ( M)
+removeDoTopLvl (L ★ M) = ( L) ★ ( M)
+removeDoTopLvl true = true
+removeDoTopLvl false = false
+removeDoTopLvl ¿ L ⦅ T ∥ F ⦆ = ¿  L ⦅  T ∥  F ⦆
+removeDoTopLvl Nothing = Nothing
+removeDoTopLvl (Just L) = Just ( L)
+removeDoTopLvl (M >>= F) = ( M) >>= ( F)
+removeDoTopLvl (do<- M ⁀ F) = ( M) >>= (ƛ ( F))
+
 private
   two : ∀ {Γ} → Γ ⊢ 𝕋𝕟
   two = num 2 
@@ -77,20 +93,38 @@ Do reduction chain:
     Just (num 2) ∎)
 -}
 
-preserveResult : {Γ : Ctx} {A : Ty} → ∀ {N M : Γ ⊢ A} → (N —↠ M) → {Val M} → (removeDo N) —↠ M
-preserveResult {context} {.𝕋𝕓} {true} {result} reduction {value} = reduction
-preserveResult {context} {.𝕋𝕓} {false} {result} reduction {value} = reduction
-preserveResult {context} {𝕋maybe} {Nothing} {result} reduction {value} = reduction
-preserveResult {context} {type} {Term x} {result} reduction {value} = reduction
-preserveResult {context} {.𝕋𝕟} {num x} {result} reduction {value} = reduction
+-- preserveResult : {Γ : Ctx} {A : Ty} → ∀ {N M : Γ ⊢ A} → (N —↠ M) → {Val M} → (removeDo N) —↠ M
+-- preserveResult {context} {.𝕋𝕓} {true} {result} reduction {value} = reduction
+-- preserveResult {context} {.𝕋𝕓} {false} {result} reduction {value} = reduction
+-- preserveResult {context} {𝕋maybe} {Nothing} {result} reduction {value} = reduction
+-- preserveResult {context} {type} {Term x} {result} reduction {value} = reduction
+-- preserveResult {context} {.𝕋𝕟} {num x} {result} reduction {value} = reduction
+--
+-- preserveResult {context} {𝕋maybe} {Just og} {result} reduction {value} = {! !}
+-- preserveResult {context} {A 𝕋⇒ B} {ƛ og} {.(ƛ _)} reduction {𝕍clos} = {! !}
+-- preserveResult {context} {type} {og · og₁} {result} reduction {value} = {! !}
+-- preserveResult {context} {.𝕋𝕟} {og ⊹ og₁} {.(num _)} reduction {𝕍𝕟} = {! !}
+--
+-- preserveResult {context} {.𝕋𝕟} {fst ★ snd} {.(num _)} (reduction) {𝕍𝕟} = {! !}
+--
+-- preserveResult {context} {type} {¿ og ⦅ og₁ ∥ og₂ ⦆} {result} reduction {value} = {! !}
+-- preserveResult {context} {.𝕋maybe} {og >>= og₁} {result} reduction {value} = {! !}
+-- preserveResult {context} {.𝕋maybe} {do<- og ⁀ og₁} {result} reduction {value} = {! !}
 
-preserveResult {context} {𝕋maybe} {Just og} {result} reduction {value} = {! !}
-preserveResult {context} {A 𝕋⇒ B} {ƛ og} {.(ƛ _)} reduction {𝕍clos} = {! !}
-preserveResult {context} {type} {og · og₁} {result} reduction {value} = {! !}
-preserveResult {context} {.𝕋𝕟} {og ⊹ og₁} {.(num _)} reduction {𝕍𝕟} = {! !}
+reducesSameTopLvl : {v : Value} {A : Ty} {L : ∅ ⊢ A} → L ↓ v → removeDoTopLvl L ↓ v
+reducesSameTopLvl ↓num = ↓num
+reducesSameTopLvl (↓add expr expr₁) = ↓add expr expr₁
+reducesSameTopLvl (↓mul expr expr₁) = ↓mul expr expr₁
+reducesSameTopLvl ↓true = ↓true
+reducesSameTopLvl ↓false = ↓false
+reducesSameTopLvl (↓¿true expr expr₁) = ↓¿true expr expr₁
+reducesSameTopLvl (↓¿false expr expr₁) = ↓¿false expr expr₁
+reducesSameTopLvl (↓lam el) = ↓lam el
+reducesSameTopLvl (↓app expr expr₁ expr₂) = ↓app expr expr₁ expr₂
+reducesSameTopLvl ↓nothing = ↓nothing
+reducesSameTopLvl (↓just expr) = ↓just expr
+reducesSameTopLvl (↓bindJust expr expr₁ expr₂) = ↓bindJust expr expr₁ expr₂
+reducesSameTopLvl (↓bindNothing expr) = ↓bindNothing expr
+reducesSameTopLvl (↓doNothing expr) = ↓bindNothing expr
+reducesSameTopLvl {x} {.𝕋maybe} {(do<- monad ⁀ expr₂)} (↓doJust expr expr₁) = ↓bindJust expr (↓lam expr₂) expr₁
 
-preserveResult {context} {.𝕋𝕟} {fst ★ snd} {.(num _)} (reduction) {𝕍𝕟} = {! !}
-
-preserveResult {context} {type} {¿ og ⦅ og₁ ∥ og₂ ⦆} {result} reduction {value} = {! !}
-preserveResult {context} {.𝕋maybe} {og >>= og₁} {result} reduction {value} = {! !}
-preserveResult {context} {.𝕋maybe} {do<- og ⁀ og₁} {result} reduction {value} = {! !}
