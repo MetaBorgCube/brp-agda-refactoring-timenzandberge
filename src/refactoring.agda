@@ -18,7 +18,7 @@ removeDo (M >>= F) = (removeDo M) >>= (removeDo F)
 removeDo (do<- M ⁀ F) = (removeDo M) >>= (ƛ (removeDo F))
 
 
-removeDoTopLvl : ∀ {A : Ty} → ∅ ⊢ A → ∅ ⊢ A
+removeDoTopLvl : ∀ {C : Ctx} {A : Ty} → C ⊢ A → C ⊢ A
 removeDoTopLvl (Term x) = Term x
 removeDoTopLvl (ƛ L) = ƛ ( L)
 removeDoTopLvl (L · M) = ( L) · ( M)
@@ -111,7 +111,7 @@ Do reduction chain:
 -- preserveResult {context} {.𝕋maybe} {og >>= og₁} {result} reduction {value} = {! !}
 -- preserveResult {context} {.𝕋maybe} {do<- og ⁀ og₁} {result} reduction {value} = {! !}
 
-reducesSameTopLvl : {v : Value} {A : Ty} {L : ∅ ⊢ A} → L ↓ v → removeDoTopLvl L ↓ v
+reducesSameTopLvl : {C : Ctx} {v : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → removeDoTopLvl L ↓ v
 reducesSameTopLvl ↓num = ↓num
 reducesSameTopLvl (↓add expr expr₁) = ↓add expr expr₁
 reducesSameTopLvl (↓mul expr expr₁) = ↓mul expr expr₁
@@ -126,5 +126,21 @@ reducesSameTopLvl (↓just expr) = ↓just expr
 reducesSameTopLvl (↓bindJust expr expr₁ expr₂) = ↓bindJust expr expr₁ expr₂
 reducesSameTopLvl (↓bindNothing expr) = ↓bindNothing expr
 reducesSameTopLvl (↓doNothing expr) = ↓bindNothing expr
-reducesSameTopLvl {x} {.𝕋maybe} {(do<- monad ⁀ expr₂)} (↓doJust expr expr₁) = ↓bindJust expr (↓lam expr₂) expr₁
+reducesSameTopLvl {c} {x} {.𝕋maybe} {(do<- monad ⁀ expr₂)} (↓doJust expr expr₁) = ↓bindJust expr (↓lam expr₂) expr₁
 
+
+
+-- from jose
+-- _≡ₑ_ : ∀ {aTy rTy} → Value (aTy 𝕋⇒ rTy) → Value ({!   !} 𝕋⇒ {!   !}) → Set 
+--
+-- data _≡ᵣ_ : ∀ {ty} → Value ty → Value (MaybeTy→ListTy ty) → Set where
+--     NothingV≡ᵣNilV : ∀ {v} → NothingV {v} ≡ᵣ NilV
+--     JustV≡ᵣConsV : ∀ {ty} {vₒ : Value ty} {vₙ} → vₒ ≡ᵣ vₙ  → JustV vₒ ≡ᵣ ConsV vₙ NilV
+--     NilV≡ᵣNilV : ∀ {ty} {v : Value ty} → NilV {ty} ≡ᵣ NilV
+--     ConsV≡ᵣConsV : ∀ {ty} {hₒ : Value ty} {tₒ} {hₙ} {tₙ} → hₒ ≡ᵣ hₙ → tₒ ≡ᵣ tₙ → ConsV hₒ tₒ ≡ᵣ ConsV hₙ tₙ
+--     LeftV≡ᵣLeftV : ∀ {ty₁ ty₂} {vₒ : Value (EitherTy ty₁ ty₂)} {vₙ} → vₒ ≡ᵣ vₙ  → LeftV {B = ty₂} vₒ ≡ᵣ LeftV vₙ
+--     RightV≡ᵣRightV : ∀ {ty₁ ty₂} {vₒ : Value (EitherTy ty₁ ty₂)} {vₙ} → vₒ ≡ᵣ vₙ  → RightV {A = ty₁} vₒ ≡ᵣ RightV vₙ
+--     ClosV≡ᵣClosV : {!   !} → ClosV {!   !} {!   !} ≡ᵣ ClosV {!   !} {!   !}
+--
+-- _≡ₑ_ = {!   !}
+--
