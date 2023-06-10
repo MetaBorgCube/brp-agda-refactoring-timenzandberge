@@ -2,6 +2,12 @@ module refactoring where
 
 open import lang
 
+-- Contextual equivalence
+data _≅_ : {C : Ctx} {A : Ty} → C ⊢ A → C ⊢ A → Set where
+  a≅a : {C : Ctx} {A : Ty} (a : C ⊢ A ) → (b : C ⊢ A ) → {a ≡ b} → a ≅ b
+  a≅b : {C : Ctx} {A B : Ty} {v w : Value} {a : C ⊢ A } → {b : C ⊢ A } → a ↓ v → b ↓ w → v ≅ w → a ≅ b
+
+
 removeDo : ∀ {C : Ctx} {A : Ty} → C ⊢ A → C ⊢ A
 removeDo (Term x) = Term x
 removeDo (ƛ L) = ƛ (removeDo L)
@@ -130,6 +136,9 @@ reducesSameTopLvl {c} {x} {.𝕋maybe} {(do<- monad ⁀ expr₂)} (↓doJust exp
 
 
 
+
+
+
 -- from jose
 -- _≡ₑ_ : ∀ {aTy rTy} → Value (aTy 𝕋⇒ rTy) → Value ({!   !} 𝕋⇒ {!   !}) → Set 
 --
@@ -143,4 +152,8 @@ reducesSameTopLvl {c} {x} {.𝕋maybe} {(do<- monad ⁀ expr₂)} (↓doJust exp
 --     ClosV≡ᵣClosV : {!   !} → ClosV {!   !} {!   !} ≡ᵣ ClosV {!   !} {!   !}
 --
 -- _≡ₑ_ = {!   !}
---
+
+
+ 
+
+  
