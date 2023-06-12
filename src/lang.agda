@@ -4,6 +4,7 @@ import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; trans; sym; cong; cong-app) public
 -- open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 open import Data.Empty using (⊥ ; ⊥-elim) public
+open import Data.Unit using (⊤) public
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; _≤?_; z≤n; s≤s) public
 open import Data.Maybe renaming (_>>=_ to bind) public
 open import Relation.Nullary using (¬_) public
@@ -141,7 +142,7 @@ data Value : Set where
   num𝕍 : ℕ → Value
   true𝕍 : Value
   false𝕍 : Value
-  clos𝕍 : ∀ {Γ A B} → (Γ , A ⊢ B) → Value
+  clos𝕍 : {Γ : Ctx} {A B : Ty} → (Γ , A ⊢ B) → Value
   nothing𝕍 : Value
   just𝕍 : ℕ → Value
   

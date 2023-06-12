@@ -1,11 +1,67 @@
 module refactoring where
 
 open import lang
+open import Data.Product public
 
 -- Contextual equivalence
-data _≅_ : {C : Ctx} {A : Ty} → C ⊢ A → C ⊢ A → Set where
-  a≅a : {C : Ctx} {A : Ty} (a : C ⊢ A ) → (b : C ⊢ A ) → {a ≡ b} → a ≅ b
-  a≅b : {C : Ctx} {A B : Ty} {v w : Value} {a : C ⊢ A } → {b : C ⊢ A } → a ↓ v → b ↓ w → v ≅ w → a ≅ b
+_≅_ : (v : Value) → (w : Value) → Set
+num𝕍 x ≅ num𝕍 x₁ = x ≡ x₁
+num𝕍 x ≅ true𝕍 = ⊥
+num𝕍 x ≅ false𝕍 = ⊥
+num𝕍 x ≅ clos𝕍 x₁ = ⊥
+num𝕍 x ≅ nothing𝕍 = ⊥
+num𝕍 x ≅ just𝕍 x₁ = ⊥
+true𝕍 ≅ num𝕍 x = ⊥
+true𝕍 ≅ true𝕍 = ⊤
+true𝕍 ≅ false𝕍 = ⊥
+true𝕍 ≅ clos𝕍 x = ⊥
+true𝕍 ≅ nothing𝕍 = ⊥
+true𝕍 ≅ just𝕍 x = ⊥
+false𝕍 ≅ num𝕍 x = ⊥
+false𝕍 ≅ true𝕍 = ⊥
+false𝕍 ≅ false𝕍 = ⊤
+false𝕍 ≅ clos𝕍 x = ⊥
+false𝕍 ≅ nothing𝕍 = ⊥
+false𝕍 ≅ just𝕍 x = ⊥
+clos𝕍 x ≅ num𝕍 x₁ = ⊥
+clos𝕍 x ≅ true𝕍 = ⊥
+clos𝕍 x ≅ false𝕍 = ⊥
+(clos𝕍 {Γ} {Aa} {Ar} x) ≅ (clos𝕍 {Δ} {Ba} {Br} y) = 
+  ∀ {retV₀ retV₁ : Value}
+  → {Γ ≡ Δ}
+  → {Aa ≡ Ba}
+  → {Ar ≡ Br}
+  → ∀ {argV : Γ ⊢ Aa }
+  → ∀ {argV₂ : Δ ⊢ Ba }
+  → (x [ argV ]) ↓ retV₀
+  → (y [ argV₂ ]) ↓ retV₁
+  → retV₀ ≅ retV₁
+  → ⊤
+
+
+-- ClosV {argTy = argTy} {retTy} γₒ bₒ ≡ᵣ ClosV γₙ bₙ = 
+--     ∀ {argVₒ : Value argTy} {argVₙ : Value (MaybeTy→ListTy argTy)} {argVₒ≡ᵣargV : argVₒ ≡ᵣ argVₙ} 
+--     {retVₒ : Value retTy} {retVₙ : Value (MaybeTy→ListTy retTy)} → 
+--     γₒ ,' argVₒ ⊢e bₒ ↓ retVₒ → 
+--     (γₙ ,' argVₙ) ⊢e bₙ ↓ retVₙ → 
+--     retVₒ ≡ᵣ retVₙ → 
+--     ⊤
+
+
+clos𝕍 x ≅ nothing𝕍 = ⊥
+clos𝕍 x ≅ just𝕍 x₁ = ⊥
+nothing𝕍 ≅ num𝕍 x = ⊥
+nothing𝕍 ≅ true𝕍 = ⊥
+nothing𝕍 ≅ false𝕍 = ⊥
+nothing𝕍 ≅ clos𝕍 x = ⊥
+nothing𝕍 ≅ nothing𝕍 = ⊤
+nothing𝕍 ≅ just𝕍 x = ⊥
+just𝕍 x ≅ num𝕍 x₁ = ⊥
+just𝕍 x ≅ true𝕍 = ⊥
+just𝕍 x ≅ false𝕍 = ⊥
+just𝕍 x ≅ clos𝕍 x₁ = ⊥
+just𝕍 x ≅ nothing𝕍 = ⊥
+just𝕍 x ≅ just𝕍 x₁ = x ≡ x₁
 
 
 removeDo : ∀ {C : Ctx} {A : Ty} → C ⊢ A → C ⊢ A
@@ -135,6 +191,8 @@ reducesSameTopLvl (↓doNothing expr) = ↓bindNothing expr
 reducesSameTopLvl {c} {x} {.𝕋maybe} {(do<- monad ⁀ expr₂)} (↓doJust expr expr₁) = ↓bindJust expr (↓lam expr₂) expr₁
 
 
+reducesEquivalent : {C : Ctx} {v w : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → ( (removeDo L) ↓ w ) × ( v ≅ w )
+reducesEquivalent = ?
 
 
 
