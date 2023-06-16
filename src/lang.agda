@@ -2,10 +2,10 @@ module lang where
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; trans; sym; cong; cong-app) public
--- open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
+open Eq.≡-Reasoning using (begin_ ; _≡⟨⟩_; step-≡; _∎)
 open import Data.Empty using (⊥ ; ⊥-elim) public
 open import Data.Unit using (⊤) public
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; _≤?_; z≤n; s≤s) public
+open import Data.Nat public
 open import Data.Maybe renaming (_>>=_ to bind) public
 open import Relation.Nullary using (¬_) public
 open import Relation.Nullary.Decidable using (True ; toWitness) public
@@ -332,7 +332,7 @@ data _↓_ : ∀ {Γ A ty} → (Γ ⊢ A) → Value ty → Set where
   ↓mul : ∀ {Γ} {el er : Γ ⊢ 𝕋𝕟}
     → ∀ {vl} → _↓_ el (num𝕍 vl)
     → ∀ {vr} → _↓_ er (num𝕍 vr)
-    → _↓_ (el ⊹ er) (num𝕍 (vl * vr))
+    → _↓_ (el ★ er) (num𝕍 (vl * vr))
   ↓true : ∀ {Γ} → (true {Γ}) ↓ (true𝕍)
   ↓false : ∀ {Γ} → (false {Γ}) ↓ (false𝕍)
   ↓¿true : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
@@ -373,23 +373,23 @@ data _↓_ : ∀ {Γ A ty} → (Γ ⊢ A) → Value ty → Set where
 
 
 infix  2 _—↠_
-infix  1 begin_
+infix  1 start_
 infixr 2 _—→⟨_⟩_
-infix  3 _∎
+infix  3 _done
 
 -- Take multiple reduction steps
 data _—↠_ {Γ A} : (Γ ⊢ A) → (Γ ⊢ A) → Set where
-  _∎ : (M : Γ ⊢ A)
+  _done : (M : Γ ⊢ A)
     → M —↠ M
   _—→⟨_⟩_ : (L : Γ ⊢ A) {M N : Γ ⊢ A}
     → L —→ M
     → M —↠ N
     → L —↠ N
 
-begin_ : ∀ {Γ A} {M N : Γ ⊢ A}
+start_ : ∀ {Γ A} {M N : Γ ⊢ A}
   → M —↠ N
   → M —↠ N
-begin M—↠N = M—↠N
+start M—↠N = M—↠N
 
 
 data Progress {A} (M : ∅ ⊢ A) : Set where
@@ -473,9 +473,9 @@ eval : ∀ {A}
   → Gas
   → (L : ∅ ⊢ A)
   → Steps L
-eval (gas zero)    L                     =  steps (L ∎) out-of-gas
+eval (gas zero)    L                     =  steps (_done L) out-of-gas
 eval (gas (suc m)) L with progress L
-... | done VL                            =  steps (L ∎) (done VL)
+... | done VL                            =  steps (_done L) (done VL)
 ... | step {M} L—→M with eval (gas m) M
 ...    | steps M—↠N fin                  =  steps (L —→⟨ L—→M ⟩ M—↠N) fin
 
@@ -491,11 +491,11 @@ private
   plus = ƛ (ƛ ( ( # 1 ) ⊹  # 0 ))
 
   2+2=4 : plus · two · two —↠ ( num 4 )
-  2+2=4 = begin
-    ((ƛ (ƛ ((Term (S Z)) ⊹ (Term Z)))) · num 2 · num 2 —→⟨
-      ξ-·₁ (β-ƛ 𝕍𝕟) ⟩
-      (ƛ (num 2 ⊹ (Term Z))) · num 2 —→⟨ β-ƛ 𝕍𝕟 ⟩
-      (num 2 ⊹ num 2) —→⟨ δ-⊹ ⟩ num 4 ∎)
+  2+2=4 = 
+    (((ƛ (ƛ ((Term (S Z)) ⊹ (Term Z)))) · (num 2)) · (num 2)) —→⟨
+    (ξ-·₁ (β-ƛ 𝕍𝕟)) ⟩
+    (((ƛ (num 2 ⊹ (Term Z))) · (num 2)) —→⟨ (β-ƛ 𝕍𝕟) ⟩
+    ((num 2 ⊹ num 2) —→⟨ δ-⊹ ⟩ (_done (num 4) )))
 
 
   -- monadplusone : ∅ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe
@@ -517,17 +517,21 @@ private
 
 
   evalbindex : bindEx —↠ (Just (num 2))
-  evalbindex =
-    (Just (num 1) >>= ƛ Just (num 1 ⊹ (Term Z)) —→⟨ β->>=Just 𝕍𝕟 ⟩
-      Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
+  evalbindex = 
+    ((Just (num 1)) >>= (ƛ (Just (num 1 ⊹ (Term Z))))) —→⟨
+    (β->>=Just 𝕍𝕟) ⟩
+    ((Just (num 1 ⊹ num 1)) —→⟨ (ξ-JustInternal δ-⊹) ⟩
+    (_done ((Just (num 2))) ))
+
 
   bigstepbindex : bindEx ↓ (just𝕍 2)
   bigstepbindex = ↓bindJust (↓just ↓num) (↓lam (Just (num 1 ⊹ (Term Z)))) (↓just (↓add ↓num ↓num))
 
   evaldoex : doEx —↠ (Just (num 2))
   evaldoex =
-    ((do<- Just (num 1) ⁀ Just (num 1 ⊹ (Term Z))) —→⟨ β-doJust 𝕍𝕟 ⟩
-      Just (num 1 ⊹ num 1) —→⟨ ξ-JustInternal δ-⊹ ⟩ Just (num 2) ∎)
+    (do<- Just (num 1) ⁀ Just (num 1 ⊹ (Term Z))) —→⟨ (β-doJust 𝕍𝕟) ⟩
+    ((Just (num 1 ⊹ num 1)) —→⟨ (ξ-JustInternal δ-⊹) ⟩
+    ( _done (Just (num 2))))
 
   bigstepdoex : doEx ↓ (just𝕍 2)
   bigstepdoex = ↓doJust (↓just ↓num) (↓just (↓add ↓num ↓num))
