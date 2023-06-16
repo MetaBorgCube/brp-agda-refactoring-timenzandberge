@@ -4,41 +4,25 @@ open import lang
 open import Data.Product public
 
 -- Contextual equivalence
-_≅_ : (v : Value) → (w : Value) → Set
-num𝕍 x ≅ num𝕍 x₁ = x ≡ x₁
-num𝕍 x ≅ true𝕍 = ⊥
-num𝕍 x ≅ false𝕍 = ⊥
-num𝕍 x ≅ clos𝕍 x₁ = ⊥
-num𝕍 x ≅ nothing𝕍 = ⊥
-num𝕍 x ≅ just𝕍 x₁ = ⊥
-true𝕍 ≅ num𝕍 x = ⊥
+_≅_ : {ty : Ty} (v : Value ty) → (w : Value ty) → Set
+num𝕍 x ≅ num𝕍 y = x ≡ y
 true𝕍 ≅ true𝕍 = ⊤
 true𝕍 ≅ false𝕍 = ⊥
-true𝕍 ≅ clos𝕍 x = ⊥
-true𝕍 ≅ nothing𝕍 = ⊥
-true𝕍 ≅ just𝕍 x = ⊥
-false𝕍 ≅ num𝕍 x = ⊥
 false𝕍 ≅ true𝕍 = ⊥
 false𝕍 ≅ false𝕍 = ⊤
-false𝕍 ≅ clos𝕍 x = ⊥
-false𝕍 ≅ nothing𝕍 = ⊥
-false𝕍 ≅ just𝕍 x = ⊥
-clos𝕍 x ≅ num𝕍 x₁ = ⊥
-clos𝕍 x ≅ true𝕍 = ⊥
-clos𝕍 x ≅ false𝕍 = ⊥
-(clos𝕍 {Γ} {Aa} {Ar} x) ≅ (clos𝕍 {Δ} {Ba} {Br} y) = 
-  ∀ {retV₀ retV₁ : Value}
-  → {Γ ≡ Δ}
-  → {Aa ≡ Ba}
-  → {Ar ≡ Br}
-  → ∀ {argV : Γ ⊢ Aa }
-  → ∀ {argV₂ : Δ ⊢ Ba }
-  → (x [ argV ]) ↓ retV₀
-  → (y [ argV₂ ]) ↓ retV₁
-  → retV₀ ≅ retV₁
+nothing𝕍 ≅ nothing𝕍 = ⊤
+nothing𝕍 ≅ just𝕍 x = ⊥
+just𝕍 x ≅ nothing𝕍 = ⊥
+just𝕍 x ≅ just𝕍 y = x ≡ y
+clos𝕍 {Γ} {aTy} {rTy} f ≅ clos𝕍 {Δ} g =
+  ∀ { ArgV : Value aTy }
+  → { retVf retVg : Value rTy }
+  → retVf ≅ retVg
+  → f ↓ retVf
+  → g ↓ retVg
   → ⊤
 
-
+  
 -- ClosV {argTy = argTy} {retTy} γₒ bₒ ≡ᵣ ClosV γₙ bₙ = 
 --     ∀ {argVₒ : Value argTy} {argVₙ : Value (MaybeTy→ListTy argTy)} {argVₒ≡ᵣargV : argVₒ ≡ᵣ argVₙ} 
 --     {retVₒ : Value retTy} {retVₙ : Value (MaybeTy→ListTy retTy)} → 
@@ -46,22 +30,6 @@ clos𝕍 x ≅ false𝕍 = ⊥
 --     (γₙ ,' argVₙ) ⊢e bₙ ↓ retVₙ → 
 --     retVₒ ≡ᵣ retVₙ → 
 --     ⊤
-
-
-clos𝕍 x ≅ nothing𝕍 = ⊥
-clos𝕍 x ≅ just𝕍 x₁ = ⊥
-nothing𝕍 ≅ num𝕍 x = ⊥
-nothing𝕍 ≅ true𝕍 = ⊥
-nothing𝕍 ≅ false𝕍 = ⊥
-nothing𝕍 ≅ clos𝕍 x = ⊥
-nothing𝕍 ≅ nothing𝕍 = ⊤
-nothing𝕍 ≅ just𝕍 x = ⊥
-just𝕍 x ≅ num𝕍 x₁ = ⊥
-just𝕍 x ≅ true𝕍 = ⊥
-just𝕍 x ≅ false𝕍 = ⊥
-just𝕍 x ≅ clos𝕍 x₁ = ⊥
-just𝕍 x ≅ nothing𝕍 = ⊥
-just𝕍 x ≅ just𝕍 x₁ = x ≡ x₁
 
 
 removeDo : ∀ {C : Ctx} {A : Ty} → C ⊢ A → C ⊢ A
@@ -173,7 +141,7 @@ Do reduction chain:
 -- preserveResult {context} {.𝕋maybe} {og >>= og₁} {result} reduction {value} = {! !}
 -- preserveResult {context} {.𝕋maybe} {do<- og ⁀ og₁} {result} reduction {value} = {! !}
 
-reducesSameTopLvl : {C : Ctx} {v : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → removeDoTopLvl L ↓ v
+reducesSameTopLvl : {C : Ctx} {A : Ty} {v : Value A} {L : C ⊢ A} → L ↓ v → removeDoTopLvl L ↓ v
 reducesSameTopLvl ↓num = ↓num
 reducesSameTopLvl (↓add expr expr₁) = ↓add expr expr₁
 reducesSameTopLvl (↓mul expr expr₁) = ↓mul expr expr₁
@@ -188,11 +156,11 @@ reducesSameTopLvl (↓just expr) = ↓just expr
 reducesSameTopLvl (↓bindJust expr expr₁ expr₂) = ↓bindJust expr expr₁ expr₂
 reducesSameTopLvl (↓bindNothing expr) = ↓bindNothing expr
 reducesSameTopLvl (↓doNothing expr) = ↓bindNothing expr
-reducesSameTopLvl {c} {x} {.𝕋maybe} {(do<- monad ⁀ expr₂)} (↓doJust expr expr₁) = ↓bindJust expr (↓lam expr₂) expr₁
+reducesSameTopLvl {c} {.𝕋maybe} {v} {(do<- monad ⁀ expr₂)} (↓doJust expr expr₁) = ↓bindJust expr (↓lam expr₂) expr₁
 
 
-reducesEquivalent : {C : Ctx} {v w : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → ( (removeDo L) ↓ w ) × ( v ≅ w )
-reducesEquivalent = ?
+-- reducesEquivalent : {C : Ctx} {v w : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → ( (removeDo L) ↓ w ) × ( v ≅ w )
+-- reducesEquivalent = ?
 
 
 

@@ -138,13 +138,13 @@ data Val : ∀ {Γ A} → Γ ⊢ A → Set where
   𝕍just    : ∀ {Γ n}
     → Val (Just {Γ} (num n))
 
-data Value : Set where
-  num𝕍 : ℕ → Value
-  true𝕍 : Value
-  false𝕍 : Value
-  clos𝕍 : {Γ : Ctx} {A B : Ty} → (Γ , A ⊢ B) → Value
-  nothing𝕍 : Value
-  just𝕍 : ℕ → Value
+data Value : Ty → Set where
+  num𝕍 : ℕ → Value 𝕋𝕟
+  true𝕍 : Value 𝕋𝕓
+  false𝕍 : Value 𝕋𝕓
+  clos𝕍 : {Γ : Ctx} {A B : Ty} → (Γ , A ⊢ B) → Value (A 𝕋⇒ B)
+  nothing𝕍 : Value 𝕋maybe
+  just𝕍 : ℕ → Value 𝕋maybe
   
 
 {- Helper functions
@@ -323,7 +323,7 @@ data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
   -- β-μ : ∀ {Γ A} {N : Γ , A ⊢ A}
   --   → μ N —→ N [ μ N ]
 
-data _↓_ : ∀ {Γ A} → (Γ ⊢ A) → Value → Set where
+data _↓_ : ∀ {Γ A ty} → (Γ ⊢ A) → Value ty → Set where
   ↓num : ∀ {Γ n} → _↓_ (num {Γ} n) (num𝕍 n)
   ↓add : ∀ {Γ} {el er : Γ ⊢ 𝕋𝕟}
     → ∀ {vl} → _↓_ el (num𝕍 vl)
@@ -337,34 +337,34 @@ data _↓_ : ∀ {Γ A} → (Γ ⊢ A) → Value → Set where
   ↓false : ∀ {Γ} → (false {Γ}) ↓ (false𝕍)
   ↓¿true : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
     → cond ↓ true𝕍
-    → ∀ {v1} → e1 ↓ v1
+    → {v1 : Value A} → e1 ↓ v1
     → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v1
   ↓¿false : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
     → cond ↓ false𝕍
-    → ∀ {v2} → e2 ↓ v2
+    → {v2 : Value A} → e2 ↓ v2
     → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v2
   ↓lam : ∀ {Γ} {A B : Ty} (el : Γ , A ⊢ B)
     → ( ƛ (el)) ↓ (clos𝕍 el)
   ↓app : {Γ : Ctx} {A B : Ty} {el : Γ ⊢ A 𝕋⇒ B} {input : Γ ⊢ A}
-    → ∀ {body : Γ , A ⊢ B} → el ↓ (clos𝕍 body)
-    → ∀ {inv} → input ↓ (inv)
-    → ∀ {val} → (body [ input ] ) ↓ val
+    → {body : Γ , A ⊢ B} → el ↓ (clos𝕍 body)
+    → {inv : Value A} → input ↓ (inv)
+    → {val : Value B} → (body [ input ] ) ↓ val
     → (el · input) ↓ val
   ↓nothing : ∀ {Γ : Ctx} → Nothing {Γ} ↓ nothing𝕍
   ↓just : ∀ {Γ : Ctx} {expr : Γ ⊢ 𝕋𝕟}
     → ∀ {n} → expr ↓ (num𝕍 n)
     → ( Just expr ) ↓ (just𝕍 n )
   ↓bindJust : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {funct : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
-    → ∀ {n} → monad ↓ (just𝕍 n)
-    → ∀ {body : Γ , 𝕋𝕟 ⊢ 𝕋maybe} → funct ↓ (clos𝕍 body)
-    → ∀ {val} → (body [ (num n) ] ) ↓ val
+    → {n : ℕ} → monad ↓ (just𝕍 n)
+    → {body : Γ , 𝕋𝕟 ⊢ 𝕋maybe} → funct ↓ (clos𝕍 body)
+    → {val : Value 𝕋maybe} → (body [ (num n) ] ) ↓ val
     → (monad >>= funct) ↓ val
   ↓bindNothing : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {funct : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
     → monad ↓ nothing𝕍
     → (monad >>= funct) ↓ nothing𝕍
   ↓doJust : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
-    → ∀ {n} → monad ↓ (just𝕍 n)
-    → ∀ {val} → (expr [ (num n) ] ) ↓ val
+    → {n : ℕ} → monad ↓ (just𝕍 n)
+    → {val : Value 𝕋maybe} → (expr [ (num n) ] ) ↓ val
     → (do<- monad ⁀ expr) ↓ val
   ↓doNothing : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
     → monad ↓ nothing𝕍
