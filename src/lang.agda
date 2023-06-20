@@ -93,11 +93,11 @@ data _⊢_ : Ctx → Ty → Set where
   false : ∀ {Γ}
     → Γ ⊢ 𝕋𝕓
 
-  ¿_⦅_∥_⦆ : ∀ {Γ A}
-    → Γ ⊢ 𝕋𝕓 -- condition
-    → Γ ⊢ A -- if True
-    → Γ ⊢ A -- if False
-    → Γ ⊢ A
+  -- ¿_⦅_∥_⦆ : ∀ {Γ A}
+  --   → Γ ⊢ 𝕋𝕓 -- condition
+  --   → Γ ⊢ A -- if True
+  --   → Γ ⊢ A -- if False
+  --   → Γ ⊢ A
 
   Nothing : ∀ {Γ}
     → Γ ⊢ 𝕋maybe
@@ -195,7 +195,7 @@ private
   rename ρ true              = true
   rename ρ false             = false
   rename ρ (ƛ N)             = ƛ (rename (ext ρ) N)
-  rename ρ (¿ L ⦅ M ∥ N ⦆)   = ¿ (rename ρ L) ⦅ (rename ρ M) ∥ (rename ρ N) ⦆
+  -- rename ρ (¿ L ⦅ M ∥ N ⦆)   = ¿ (rename ρ L) ⦅ (rename ρ M) ∥ (rename ρ N) ⦆
   rename ρ (num M)           = num M
   rename ρ (Term x)          = Term (ρ x)
   rename ρ (L ★ M)           = (rename ρ L) ★ (rename ρ M)
@@ -219,7 +219,7 @@ private
   subst σ true             = true
   subst σ false            = false
   subst σ (ƛ N)            = ƛ (subst (exts σ) N)
-  subst σ (¿ L ⦅ M ∥ N ⦆ ) = ¿ (subst σ L) ⦅ (subst σ M) ∥ (subst σ N) ⦆
+  -- subst σ (¿ L ⦅ M ∥ N ⦆ ) = ¿ (subst σ L) ⦅ (subst σ M) ∥ (subst σ N) ⦆
   subst σ (num M)          = (num M)
   subst σ (Term x)         = σ x
   subst σ (L ★ M)          = (subst σ L) ★ (subst σ M)
@@ -264,15 +264,15 @@ data _—→_ : ∀ {Γ A} → (Γ ⊢ A) → (Γ ⊢ A) → Set where
     → Val W
     → ((ƛ N) · W) —→ (N [ W ])
   -- simplify condition
-  ξ-¿ : ∀ {Γ A} {L L′ : Γ ⊢ 𝕋𝕓} {M : Γ ⊢ A} {N : Γ ⊢ A}
-    → L —→ L′
-    → ¿ L ⦅ M ∥ N ⦆ —→ ¿ L′ ⦅ M ∥ N ⦆
+  -- ξ-¿ : ∀ {Γ A} {L L′ : Γ ⊢ 𝕋𝕓} {M : Γ ⊢ A} {N : Γ ⊢ A}
+    -- → L —→ L′
+    -- → ¿ L ⦅ M ∥ N ⦆ —→ ¿ L′ ⦅ M ∥ N ⦆
   -- if statement on truth
-  β-¿true : ∀ {Γ A} {M : Γ ⊢ A} {N : Γ ⊢ A}
-    → ¿ true ⦅ M ∥ N ⦆ —→ M
-  -- if statement on falsity
-  β-¿false : ∀ {Γ A} {M : Γ ⊢ A} {N : Γ ⊢ A}
-    → ¿ false ⦅ M ∥ N ⦆ —→ N
+  -- β-¿true : ∀ {Γ A} {M : Γ ⊢ A} {N : Γ ⊢ A}
+  --   → ¿ true ⦅ M ∥ N ⦆ —→ M
+  -- -- if statement on falsity
+  -- β-¿false : ∀ {Γ A} {M : Γ ⊢ A} {N : Γ ⊢ A}
+  --   → ¿ false ⦅ M ∥ N ⦆ —→ N
 
   ξ-⊹₁ : ∀ {Γ} {L L′ M : Γ ⊢ 𝕋𝕟}
     → L —→ L′
@@ -335,14 +335,14 @@ data _↓_ : ∀ {Γ A ty} → (Γ ⊢ A) → Value ty → Set where
     → _↓_ (el ★ er) (num𝕍 (vl * vr))
   ↓true : ∀ {Γ} → (true {Γ}) ↓ (true𝕍)
   ↓false : ∀ {Γ} → (false {Γ}) ↓ (false𝕍)
-  ↓¿true : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
-    → cond ↓ true𝕍
-    → {v1 : Value A} → e1 ↓ v1
-    → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v1
-  ↓¿false : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
-    → cond ↓ false𝕍
-    → {v2 : Value A} → e2 ↓ v2
-    → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v2
+  -- ↓¿true : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
+  --   → cond ↓ true𝕍
+  --   → {v1 : Value A} → e1 ↓ v1
+  --   → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v1
+  -- ↓¿false : ∀ {Γ A} {cond : Γ ⊢ 𝕋𝕓} {e1 e2 : Γ ⊢ A}
+  --   → cond ↓ false𝕍
+  --   → {v2 : Value A} → e2 ↓ v2
+  --   → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v2
   ↓lam : ∀ {Γ} {A B : Ty} (el : Γ , A ⊢ B)
     → ( ƛ (el)) ↓ (clos𝕍 el)
   ↓app : {Γ : Ctx} {A B : Ty} {el : Γ ⊢ A 𝕋⇒ B} {input : Γ ⊢ A}
@@ -423,10 +423,10 @@ progress (L ★ M) with progress L
 ...        | done 𝕍𝕟                    =  step (δ-★)
 progress (true) = done 𝕍true
 progress (false) = done 𝕍false
-progress (¿ C ⦅ T ∥ F ⦆ ) with progress C
-...    | step C—→C′                     = step (ξ-¿ C—→C′)
-...    | done 𝕍true                     = step (β-¿true)
-...    | done 𝕍false                    = step (β-¿false)
+-- progress (¿ C ⦅ T ∥ F ⦆ ) with progress C
+-- ...    | step C—→C′                     = step (ξ-¿ C—→C′)
+-- ...    | done 𝕍true                     = step (β-¿true)
+-- ...    | done 𝕍false                    = step (β-¿false)
 progress Nothing                        = done 𝕍nothing
 progress (Just N) with progress N
 ...    | step x = step (ξ-JustInternal x)
