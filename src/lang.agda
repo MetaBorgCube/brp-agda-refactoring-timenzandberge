@@ -12,9 +12,9 @@ open import Relation.Nullary.Decidable using (True ; toWitness) public
 
 
 -- TODO(FIX): Clean up these infix operators
-infix  4 _⊢_
-infix  4 _∋_
-infixl 5 _,_
+infixl  4 _⊢_
+infix   4 _∋_
+infix  10 _⸴_
 
 -- infixr 7 _⇒_
 -- infixr 7 𝕋_⇒_
@@ -41,15 +41,15 @@ data Ty : Set where
 
 data Ctx : Set where
   ∅   : Ctx
-  _,_ : Ctx → Ty → Ctx
+  _⸴_ : Ctx → Ty → Ctx
 
 -- proof that Context contains an element of that type
 data _∋_ : Ctx → Ty → Set where
   Z : ∀ {Γ A}
-    → Γ , A ∋ A
+    → Γ ⸴ A ∋ A
   S_ : ∀ {Γ A B}
     → Γ ∋ A
-    → Γ , B ∋ A
+    → Γ ⸴ B ∋ A
 
 -- the resulting type of evaluating a context
 data _⊢_ : Ctx → Ty → Set where
@@ -58,7 +58,7 @@ data _⊢_ : Ctx → Ty → Set where
     → Γ ⊢ A
 
   ƛ_ : ∀ {Γ A B}
-    → Γ , A ⊢ B
+    → Γ ⸴ A ⊢ B
     → Γ ⊢ A 𝕋⇒ B 
 
   _·_ : ∀ {Γ A B}
@@ -100,18 +100,18 @@ data _⊢_ : Ctx → Ty → Set where
 
   do<-_⁀_ : ∀ {Γ}
     → Γ ⊢ 𝕋maybe
-    → Γ , 𝕋𝕟 ⊢ 𝕋maybe
+    → Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe
     → Γ ⊢ 𝕋maybe
 
   -- -- fixpoint Y combinator
   -- Y_ : ∀ {Γ A}
-  --   → Γ , A ⊢ A
+  --   → Γ ⸴ A ⊢ A
   --   → Γ ⊢ A
-  -- -- JumpNotZero, the `case` in PLFA
+  -- -- JumpNotZero⸴ the `case` in PLFA
   -- jnz_¿_⟪_∥_⟫ : ∀ {Γ A}
   --   → Γ ⊢ 𝕋𝕟
   --   → Γ ⊢ A
-  --   → Γ , 𝕋𝕟 ⊢ A
+  --   → Γ ⸴ 𝕋𝕟 ⊢ A
   --   → Γ ⊢ A
   -- ¿_⦅_∥_⦆ : ∀ {Γ A}
   --   → Γ ⊢ 𝕋𝕓 -- condition
@@ -127,11 +127,11 @@ data Val : ∀ {Γ A} → Γ ⊢ A → Set where
     → Val (true  {Γ})
   𝕍false   : ∀ {Γ}
     → Val (false {Γ})
-  𝕍clos    : ∀ {Γ A B} → {N : Γ , A ⊢ B}
+  𝕍clos    : ∀ {Γ A B} → {N : Γ ⸴ A ⊢ B}
     → Val (ƛ N)
   𝕍nothing : ∀ {Γ}
     → Val (Nothing {Γ})
-  -- 𝕍just    : ∀ {Γ A} → {N : Γ , A ⊢ 𝕋𝕟}
+  -- 𝕍just    : ∀ {Γ A} → {N : Γ ⸴ A ⊢ 𝕋𝕟}
   --   → Val (Just N)
   𝕍just    : ∀ {Γ n}
     → Val (Just {Γ} (num n))
@@ -140,11 +140,11 @@ data Val : ∀ {Γ A} → Γ ⊢ A → Set where
 data Value : Ty → Set
 data Env : Ctx → Set where
   ∅′   : Env ∅
-  _,′_ : -- Env → Ty → Env
-    {Γ : Ctx} {A : Ty} -- → ClosEnv Γ → Value A → ClosEnv (Γ , A)
+  _⸴′_ : -- Env → Ty → Env
+    {Γ : Ctx} {A : Ty} -- → ClosEnv Γ → Value A → ClosEnv (Γ ⸴ A)
     → Env Γ
     → Value A
-    → Env (Γ , A)
+    → Env (Γ ⸴ A)
 
 -- data Clos : Set where
 --   clos : {Γ : Ctx} {A : Ty} → (M : Γ ⊢ A) → ClosEnv Γ → Clos
@@ -154,16 +154,16 @@ data Env : Ctx → Set where
 -- ∅′ : ClosEnv ∅
 -- ∅′ ()
 
--- _,′_ : {Γ : Ctx} {A : Ty} → ClosEnv Γ → Value A → ClosEnv (Γ , A)
--- (γ ,′ c) Z = c
--- (γ ,′ c) (S x) = γ x
+-- _⸴′_ : {Γ : Ctx} {A : Ty} → ClosEnv Γ → Value A → ClosEnv (Γ ⸴ A)
+-- (γ ⸴′ c) Z = c
+-- (γ ⸴′ c) (S x) = γ x
 
 data Value where
   num𝕍 : ℕ → Value 𝕋𝕟
   true𝕍 : Value 𝕋𝕓
   false𝕍 : Value 𝕋𝕓
-  -- clos𝕍 : {Γ : Ctx} {A B : Ty} → (Γ , A ⊢ B) → Value (A 𝕋⇒ B)
-  clos𝕍 : {Γ : Ctx} {A B : Ty} → (body : Γ , A ⊢ B) → Env Γ → Value (A 𝕋⇒ B)
+  -- clos𝕍 : {Γ : Ctx} {A B : Ty} → (Γ ⸴ A ⊢ B) → Value (A 𝕋⇒ B)
+  clos𝕍 : {Γ : Ctx} {A B : Ty} → (body : Γ ⸴ A ⊢ B) → Env Γ → Value (A 𝕋⇒ B)
   nothing𝕍 : Value 𝕋maybe
   just𝕍 : ℕ → Value 𝕋maybe
   
@@ -172,15 +172,15 @@ data Value where
 private
   length : Ctx → ℕ
   length ∅         = zero
-  length ( Γ , _ ) = suc (length Γ)
+  length ( Γ ⸴ _ ) = suc (length Γ)
 
   lookup : {Γ : Ctx} → {n : ℕ} → (p : n < length Γ) → Ty
-  lookup {(_ , A)} {zero}    (s≤s z≤n) = A
-  lookup {(Γ , _)} {(suc n)} (s≤s p)   = lookup p
+  lookup {(_ ⸴ A)} {zero}    (s≤s z≤n) = A
+  lookup {(Γ ⸴ _)} {(suc n)} (s≤s p)   = lookup p
 
   count : ∀ {Γ} → {n : ℕ} → (p : n < length Γ) → Γ ∋ lookup p
-  count {_ , _} {zero}    (s≤s z≤n) = Z
-  count {Γ , _} {(suc n)} (s≤s p)   = S (count p)
+  count {_ ⸴ _} {zero}    (s≤s z≤n) = Z
+  count {Γ ⸴ _} {(suc n)} (s≤s p)   = S (count p)
 
 {- get the Term `n` declerations back -}
 #_ : ∀ {Γ}
@@ -191,8 +191,8 @@ private
 
 valueLookup : {Γ : Ctx} {A : Ty} → (γ : Env Γ) → (Γ ∋ A) → Value A
 valueLookup ∅′ ()
-valueLookup (γ ,′ x) Z = x
-valueLookup (γ ,′ x) (S y) = valueLookup γ y
+valueLookup (γ ⸴′ x) Z = x
+valueLookup (γ ⸴′ x) (S y) = valueLookup γ y
 
 {- example programs -}
 
@@ -210,7 +210,7 @@ private
   -- Extension lemma
   ext : ∀ {Γ Δ}
     → (∀ {A}   →     Γ ∋ A →     Δ ∋ A)
-    → (∀ {A B} → Γ , B ∋ A → Δ , B ∋ A)
+    → (∀ {A B} → Γ ⸴ B ∋ A → Δ ⸴ B ∋ A)
   ext ρ Z      =  Z
   ext ρ (S x)  =  S (ρ x)
 
@@ -234,7 +234,7 @@ private
 
   exts : ∀ {Γ Δ}
     → (∀ {A}   →     Γ ∋ A →     Δ ⊢ A)
-    → (∀ {A B} → Γ , B ∋ A → Δ , B ⊢ A)
+    → (∀ {A B} → Γ ⸴ B ∋ A → Δ ⸴ B ⊢ A)
   exts σ Z      =  Term Z
   exts σ (S x)  =  rename S_ (σ x)
 
@@ -259,18 +259,18 @@ private
 -- Substitution
 -- substitutes the innermost free variable with the given term
 _[_] : ∀ {Γ A B}
-  → Γ , B ⊢ A
+  → Γ ⸴ B ⊢ A
   → Γ ⊢ B
   → Γ ⊢ A
-_[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} σ {A} N
+_[_] {Γ} {A} {B} N M =  subst {Γ ⸴ B} {Γ} σ {A} N
   where
-  σ : ∀ {A} → Γ , B ∋ A → Γ ⊢ A
+  σ : ∀ {A} → Γ ⸴ B ∋ A → Γ ⊢ A
   σ Z      =  M
   σ (S x)  =  Term x
 
 
 {- Reductions
- ξ : compatibility, reduce a part of a term
+ ξ : compatibility⸴ reduce a part of a term
  β : eliminate a constructor combined with a destructor
  δ : apply a built in bifunctor
 -}
@@ -285,7 +285,7 @@ _[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} σ {A} N
 --     → M —→ M′
 --     → V · M —→ V · M′
 --   -- apply function
---   β-ƛ : ∀ {Γ A B} {N : Γ , A ⊢ B} {W : Γ ⊢ A}
+--   β-ƛ : ∀ {Γ A B} {N : Γ ⸴ A ⊢ B} {W : Γ ⊢ A}
 --     → Val W
 --     → ((ƛ N) · W) —→ (N [ W ])
 --   -- simplify condition
@@ -327,16 +327,16 @@ _[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} σ {A} N
 --     → V >>= M —→ V >>= M′
 --   β->>=Nothing : ∀ {Γ} {F : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe }
 --     → Nothing >>= (F ) —→ Nothing
---   β->>=Just : ∀ {Γ} {F : Γ , 𝕋𝕟 ⊢ 𝕋maybe } {M : Γ ⊢ 𝕋𝕟 }
+--   β->>=Just : ∀ {Γ} {F : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe } {M : Γ ⊢ 𝕋𝕟 }
 --     → Val M
 --     → (Just M) >>= (ƛ F) —→ (F [ M ])
 --   -- Do notation
---   ξ-do₁ : ∀ {Γ} {L L′ : Γ ⊢ 𝕋maybe} {M : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+--   ξ-do₁ : ∀ {Γ} {L L′ : Γ ⊢ 𝕋maybe} {M : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe}
 --     → L —→ L′
 --     → do<- L ⁀ M —→ do<- L′ ⁀ M
---   β-doNothing : ∀ {Γ} {F : Γ , 𝕋𝕟 ⊢ 𝕋maybe }
+--   β-doNothing : ∀ {Γ} {F : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe }
 --     → do<- Nothing ⁀ (F) —→ Nothing
---   β-doJust : ∀ {Γ} {F : Γ , 𝕋𝕟 ⊢ 𝕋maybe } {M : Γ ⊢ 𝕋𝕟 }
+--   β-doJust : ∀ {Γ} {F : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe } {M : Γ ⊢ 𝕋𝕟 }
 --     → Val M
 --     → do<- (Just M) ⁀ (F) —→ (F [ M ])
 --   -- Just reduction
@@ -345,7 +345,7 @@ _[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} σ {A} N
 --     → Just M —→ Just M′
 --
   -- apply fixpoint function
-  -- β-μ : ∀ {Γ A} {N : Γ , A ⊢ A}
+  -- β-μ : ∀ {Γ A} {N : Γ ⸴ A ⊢ A}
   --   → μ N —→ N [ μ N ]
 
 -- data _↓_ : ∀ {Γ A} → (Γ ⊢ A) → Value A → Set where
@@ -368,10 +368,10 @@ _[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} σ {A} N
 --   --   → cond ↓ false𝕍
 --   --   → {v2 : Value A} → e2 ↓ v2
 --   --   → (¿ cond ⦅ e1 ∥ e2 ⦆) ↓ v2
---   ↓lam : ∀ {Γ} {A B : Ty} (el : Γ , A ⊢ B)
+--   ↓lam : ∀ {Γ} {A B : Ty} (el : Γ ⸴ A ⊢ B)
 --     → ( ƛ (el)) ↓ (clos𝕍 el)
 --   ↓app : {Γ : Ctx} {A B : Ty} {el : Γ ⊢ A 𝕋⇒ B} {input : Γ ⊢ A}
---     → {body : Γ , A ⊢ B} → el ↓ (clos𝕍 body)
+--     → {body : Γ ⸴ A ⊢ B} → el ↓ (clos𝕍 body)
 --     → {inv : Value A} → input ↓ (inv)
 --     → {val : Value B} → (body [ input ] ) ↓ val
 --     → (el · input) ↓ val
@@ -381,17 +381,17 @@ _[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} σ {A} N
 --     → ( Just expr ) ↓ (just𝕍 n )
 --   ↓bindJust : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {funct : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
 --     → {n : ℕ} → monad ↓ (just𝕍 n)
---     → {body : Γ , 𝕋𝕟 ⊢ 𝕋maybe} → funct ↓ (clos𝕍 body)
+--     → {body : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe} → funct ↓ (clos𝕍 body)
 --     → {val : Value 𝕋maybe} → (body [ (num n) ] ) ↓ val
 --     → (monad >>= funct) ↓ val
 --   ↓bindNothing : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {funct : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
 --     → monad ↓ nothing𝕍
 --     → (monad >>= funct) ↓ nothing𝕍
---   ↓doJust : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+--   ↓doJust : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe}
 --     → {n : ℕ} → monad ↓ (just𝕍 n)
 --     → {val : Value 𝕋maybe} → (expr [ (num n) ] ) ↓ val
 --     → (do<- monad ⁀ expr) ↓ val
---   ↓doNothing : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+--   ↓doNothing : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe}
 --     → monad ↓ nothing𝕍
 --     → (do<- monad ⁀ expr) ↓ nothing𝕍
 private
@@ -400,9 +400,12 @@ private
   variable δ : Env Δ
   variable A B : Ty
 data _⊨_↓_ : Env Γ → (Γ ⊢ A) → Value A → Set where
-  ↓var : {x : Γ ∋ A}
+  ↓var :
+    {x : Γ ∋ A}
     → γ ⊨ Term x ↓ (valueLookup γ x)
   ↓num : {n : ℕ} → γ ⊨ (num {Γ} n) ↓ (num𝕍 n)
+  -- ↓true : γ ⊨ (true) ↓ true𝕍
+  -- ↓false : γ ⊨ (false) ↓ false𝕍
   ↓add : {left right : Γ ⊢ 𝕋𝕟}
     → {vl : ℕ} → γ ⊨ (left) ↓ (num𝕍 vl)
     → {vr : ℕ} → γ ⊨ (right) ↓ (num𝕍 vr)
@@ -411,12 +414,12 @@ data _⊨_↓_ : Env Γ → (Γ ⊢ A) → Value A → Set where
     → {vl : ℕ} → γ ⊨ (left) ↓ (num𝕍 vl)
     → {vr : ℕ} → γ ⊨ (right) ↓ (num𝕍 vr)
     → γ ⊨ (left ★ right) ↓ num𝕍 (vl * vr)
-  ↓lam : {body : Γ , A ⊢ B}
+  ↓lam : {body : Γ ⸴ A ⊢ B}
     → γ ⊨ (ƛ body) ↓ (clos𝕍 body γ)
-  ↓app : ∀{fun : Γ ⊢ A 𝕋⇒ B} {input : Γ ⊢ A} {body : Δ , A ⊢ B} {retVal : Value B} {argVal : Value A}
+  ↓app : ∀{fun : Γ ⊢ A 𝕋⇒ B} {input : Γ ⊢ A} {body : Δ ⸴ A ⊢ B} {retVal : Value B} {argVal : Value A}
     → γ ⊨ fun ↓ (clos𝕍 body δ)
     → γ ⊨ input ↓ argVal
-    → (δ ,′ argVal) ⊨ body ↓ retVal
+    → (δ ⸴′ argVal) ⊨ body ↓ retVal
     → γ ⊨ fun · input ↓ retVal
   ↓nothing : γ ⊨ (Nothing {Γ}) ↓ nothing𝕍
   ↓just : {n : ℕ} {L : Γ ⊢ 𝕋𝕟}
@@ -424,17 +427,17 @@ data _⊨_↓_ : Env Γ → (Γ ⊢ A) → Value A → Set where
     → γ ⊨ (Just L) ↓ (just𝕍 n)
   ↓bindJust : {monad : Γ ⊢ 𝕋maybe} {fun : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
     → {n : ℕ} → γ ⊨ monad ↓ (just𝕍 n)
-    → {body : Γ , 𝕋𝕟 ⊢ 𝕋maybe} → γ ⊨ fun ↓ (clos𝕍 body δ)
-    → {retVal : Value 𝕋maybe} → (δ ,′ (num𝕍 n)) ⊨ body ↓ retVal
+    → {body : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe} → γ ⊨ fun ↓ (clos𝕍 body δ)
+    → {retVal : Value 𝕋maybe} → (δ ⸴′ (num𝕍 n)) ⊨ body ↓ retVal
     → γ ⊨ monad >>= fun ↓ retVal
   ↓bindNothing : {monad : Γ ⊢ 𝕋maybe} {fun : Γ ⊢ 𝕋𝕟 𝕋⇒ 𝕋maybe}
     → γ ⊨ monad ↓ (nothing𝕍)
     → γ ⊨ monad >>= fun ↓ nothing𝕍
-  ↓doJust : {monad : Γ ⊢ 𝕋maybe} {expr : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+  ↓doJust : {monad : Γ ⊢ 𝕋maybe} {expr : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe}
     → {n : ℕ} → γ ⊨ monad ↓ (just𝕍 n)
-    → {retVal : Value 𝕋maybe} → (γ ,′ (num𝕍 n)) ⊨ expr ↓ retVal
+    → {retVal : Value 𝕋maybe} → (γ ⸴′ (num𝕍 n)) ⊨ expr ↓ retVal
     → γ ⊨ do<- monad ⁀ expr ↓ retVal
-  ↓doNothing : {monad : Γ ⊢ 𝕋maybe} {expr : Γ , 𝕋𝕟 ⊢ 𝕋maybe}
+  ↓doNothing : {monad : Γ ⊢ 𝕋maybe} {expr : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe}
     → γ ⊨ monad ↓ (nothing𝕍)
     → γ ⊨ do<- monad ⁀ expr ↓ nothing𝕍
 
@@ -595,7 +598,7 @@ private
   -- bigstepbindex = ↓bindJust (↓just ↓num) (↓lam (Just (num 1 ⊹ (Term Z)))) (↓just (↓add ↓num ↓num))
 
   bigstepbindex : ∅′ ⊨ bindEx ↓ (just𝕍 2)
-  bigstepbindex = ↓bindJust (↓just ↓num) ↓lam (↓just (↓add ↓num ↓var))
+  bigstepbindex = ↓bindJust (↓just ↓num) ↓lam (↓just (↓add ↓num ↓var ))
 
   -- evaldoex : doEx —↠ (Just (num 2))
   -- evaldoex =

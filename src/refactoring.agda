@@ -12,11 +12,10 @@ open import Data.Nat.Properties
 
 variable A B ty : Ty
 variable Γ Δ C : Ctx
-variable v w : Value A
+variable v : Value A
 variable L : Γ ⊢ A
 variable γ : Env Γ
 variable δ : Env Δ
-
 
 --   num𝕍 x ≅ num𝕍 y = x ≡ y
 --   true𝕍 ≅ true𝕍 = ⊤
@@ -38,8 +37,8 @@ variable δ : Env Δ
 -- -- ClosV {argTy = argTy} {retTy} γₒ bₒ ≡ᵣ ClosV γₙ bₙ = 
 -- --     ∀ {argVₒ : Value argTy} {argVₙ : Value (MaybeTy→ListTy argTy)} {argVₒ≡ᵣargV : argVₒ ≡ᵣ argVₙ} 
 -- --     {retVₒ : Value retTy} {retVₙ : Value (MaybeTy→ListTy retTy)} → 
--- --     γₒ ,' argVₒ ⊢e bₒ ↓ retVₒ → 
--- --     (γₙ ,' argVₙ) ⊢e bₙ ↓ retVₙ → 
+-- --     γₒ ⸴' argVₒ ⊢e bₒ ↓ retVₒ → 
+-- --     (γₙ ⸴' argVₙ) ⊢e bₙ ↓ retVₙ → 
 -- --     retVₒ ≡ᵣ retVₙ → 
 -- --     ⊤
 
@@ -59,6 +58,18 @@ removeDo (Just L) = Just (removeDo L)
 removeDo (M >>= F) = (removeDo M) >>= (removeDo F)
 removeDo (do<- M ⁀ F) = (removeDo M) >>= (ƛ (removeDo F))
 
+removeDoValue : Value A → Value A
+removeDoEnv : Env Γ → Env Γ
+
+removeDoEnv ∅′ = ∅′
+removeDoEnv (γ ⸴′ x) = (removeDoEnv γ) ⸴′ (removeDoValue x)
+
+removeDoValue (num𝕍 x) = num𝕍 x
+removeDoValue true𝕍 = true𝕍
+removeDoValue false𝕍 = false𝕍
+removeDoValue (clos𝕍 body γ) = clos𝕍 (removeDo body) (removeDoEnv γ)
+removeDoValue nothing𝕍 = nothing𝕍
+removeDoValue (just𝕍 x) = just𝕍 x
 
 removeDoTopLvl : Γ ⊢ A → Γ ⊢ A
 removeDoTopLvl (Term x) = Term x
@@ -83,14 +94,15 @@ data _≅_ : (v : Value ty) → (w : Value ty) → Set where
   false𝕍≅false𝕍 : false𝕍 ≅ false𝕍
   nothing𝕍≅nothing𝕍 : nothing𝕍 ≅ nothing𝕍
   just𝕍≅just𝕍 : {x y : ℕ} → x ≡ y → (just𝕍 x) ≅ (just𝕍 y)
-  -- clos𝕍≅clos𝕍 : {aTy rTy : Ty} {f g : C , aTy ⊢ rTy}
+  -- clos𝕍≅clos𝕍 : {aTy rTy : Ty} {f g : C ⸴ aTy ⊢ rTy}
   --   → ∀ { ArgV : Value aTy }
   --   → { retVf retVg : Value rTy }
   --   → γ ⊨ f ↓ retVf
   --   → γ ⊨ g ↓ retVg
   --   → retVf ≅ retVg
   --   → clos𝕍 f ≅ clos𝕍 g 
-  tempequiv : (body : Γ , A ⊢ B) → clos𝕍 body γ ≅ clos𝕍 (removeDo body) γ
+  tempEquiv : (body : (Γ ⸴ A) ⊢ B) → clos𝕍 body γ ≅ clos𝕍 (removeDo body) (removeDoEnv γ)
+  sameEquiv : (body : (Γ ⸴ A) ⊢ B) → clos𝕍 body γ ≅ clos𝕍 body γ
 
 
 private
@@ -191,145 +203,203 @@ plusisthesame {vl} {vr} {vl} {vr} refl refl = num𝕍x≅num𝕍y refl
 multisthesame : ∀ {vl vr vln vrn} → vl ≡ vln → vr ≡ vrn → num𝕍 (vl * vr) ≅ num𝕍 (vln * vrn)
 multisthesame {vl} {vr} {vl} {vr} refl refl = num𝕍x≅num𝕍y refl
 
-reducesEquivalent : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → ∃[ w ] ( (γ ⊨ (removeDo L) ↓ w) × ( v ≅ w ) )
+reducesEquivalent : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → ∃[ w ] ( ((removeDoEnv γ) ⊨ (removeDo L) ↓ w) × ( v ≅ w ) )
 
--- Construct the value which we will prove is equivalent and the result of `removeDo`
-proj₁ (reducesEquivalent {c} {env} {.𝕋𝕟} {num𝕍 n} {l} x) = num𝕍 n 
-proj₁ (reducesEquivalent {c} {env} {.𝕋𝕓} {true𝕍} {l} x) = true𝕍
-proj₁ (reducesEquivalent {c} {env} {.𝕋𝕓} {false𝕍} {l} x) = false𝕍
-proj₁ (reducesEquivalent {c} {env} {.(_ 𝕋⇒ _)} {clos𝕍 body δ} {l} x) = clos𝕍 (removeDo body) δ
-proj₁ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {l} x) = nothing𝕍
-proj₁ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 n} {l} x) = just𝕍 n
+-- Produce the value that the refactored function should produce
+proj₁ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} ↓var) with val
+... | num𝕍 x = num𝕍 x
+... | true𝕍 = true𝕍
+... | false𝕍 = false𝕍
+... | clos𝕍 body x = clos𝕍 {! !} {! !}
+... | nothing𝕍 = nothing𝕍
+... | just𝕍 x = just𝕍 x
+proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕟} {num𝕍 x} {lang} red) = num𝕍 x
+proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕓} {true𝕍} {lang} red) = true𝕍
+proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕓} {false𝕍} {lang} red) = false𝕍
+proj₁ (reducesEquivalent {Γ} {γ} {(D 𝕋⇒ E)} {clos𝕍 body δ} {lang} red) = clos𝕍 (removeDo body) (removeDoEnv δ)
+proj₁ (reducesEquivalent {Γ} {γ} {𝕋maybe} {nothing𝕍} {lang} red) = nothing𝕍
+proj₁ (reducesEquivalent {Γ} {γ} {𝕋maybe} {just𝕍 x} {lang} red) = just𝕍 x
 
--- Prove that the refactored function reduces to that value
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} ↓num)) = ↓num
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕟} {(num𝕍 (res))} {(left ⊹ right)} (↓add x y))) = ↓add newleftred newrightred
+-- proj₁ (proj₂ (reducesEquivalent red )) = ?
+
+-- Provide the reduction to that value
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}))) = ↓var {Γ} {A} { ? } { ? }
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} ↓num)) = ↓num
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ⊹ _)} (↓add x y))) = ↓add newleftred newrightred
   where
-    -- leftval  = valuetonumber ( proj₁ (reducesEquivalent x) )
-    -- rightval = valuetonumber ( proj₁ (reducesEquivalent x) )
     newleftred  = proj₁ ( proj₂ (reducesEquivalent x) )
     newrightred = proj₁ ( proj₂ (reducesEquivalent y) )
-    -- leftequiv  = proj₂ ( proj₂ (reducesEquivalent x) )
-    -- rightequiv = proj₂ ( proj₂ (reducesEquivalent y) )
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕟} {(num𝕍 (res))} {(left ★ right)} (↓mul x y))) = ↓mul newleftred newrightred
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ★ _)} (↓mul x y))) = ↓mul newleftred newrightred
   where
     newleftred  = proj₁ ( proj₂ (reducesEquivalent x) )
     newrightred = proj₁ ( proj₂ (reducesEquivalent y) )
-proj₁ (proj₂ (reducesEquivalent {c} {env} {ty} {val} {lang} ↓true)) = ?
-proj₁ (proj₂ (reducesEquivalent {c} {env} {ty} {val} {lang} ↓false)) = ?
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.(_ 𝕋⇒ _)} {closure} {lang} (↓lam))) = ↓lam 
-proj₁ (proj₂ (reducesEquivalent {c} {env} {ty} {val} {(fun · inp)} (↓app funR inpR red))) = ↓app funred inpred {!  !}
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {(A 𝕋⇒ B)} {.(clos𝕍 _ γ)} {.(ƛ _)} (↓lam {Γ} {A} {B} {γ} {body} ))) = ↓lam {Γ} {A} {B} {removeDoEnv γ} 
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {val} {(fun · inp)} (↓app funred inpred resred))) = ↓app newfunred newinpred {! !}
   where
-    funred = proj₁ (proj₂ (reducesEquivalent funR))
-    inpred = proj₁ (proj₂ (reducesEquivalent inpR))
-    totred = proj₁ (proj₂ (reducesEquivalent red))
-    inpeqv = proj₂ (proj₂ (reducesEquivalent inpR))
-    inpval = proj₁ (reducesEquivalent inpR)
-    -- idea: postulate some proof that in equivalent input, substitution maintains equivalence
-    -- alternatively: switch to environments
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {.nothing𝕍} {.Nothing} ↓nothing)) = ↓nothing
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {(just𝕍 n)} {(Just expr)} (↓just x))) = ↓just newred
+    newfunred = proj₁ (proj₂ (reducesEquivalent funred))
+    newinpred = proj₁ (proj₂ (reducesEquivalent inpred))
+    newinpval = proj₁ (reducesEquivalent inpred)
+    newfunval = proj₁ (reducesEquivalent funred)
+    newresred = proj₁ (proj₂ (reducesEquivalent {(Γ ⸴ A)} {(γ ⸴′ {! !})} {! !}))
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.Nothing} ↓nothing)) = ↓nothing
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {.(just𝕍 _)} {.(Just _)} (↓just intred))) = ↓just newintred
   where
-    newred = proj₁ (proj₂ (reducesEquivalent x))
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 n} {(monad >>= lam)} (↓bindJust mon↓just lam↓body red))) = ↓bindJust funred inpred {! !}
+    newintred = proj₁ (proj₂ (reducesEquivalent intred))
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {val} {.(_ >>= _)} (↓bindJust monadred funred bodyred))) = ↓bindJust newmonadred newfunred {!   !}
   where
-    funred = proj₁ (proj₂ (reducesEquivalent mon↓just))
-    inpred = proj₁ (proj₂ (reducesEquivalent lam↓body))
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {(monad >>= lam)} (↓bindJust mon↓just lam↓body red))) = ↓bindJust funred inpred {! !}
-  where
-    funred = proj₁ (proj₂ (reducesEquivalent mon↓just))
-    inpred = proj₁ (proj₂ (reducesEquivalent lam↓body))
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {(monad >>= lam)} (↓bindNothing x))) = ↓bindNothing newred
-  where
-    newred = proj₁ (proj₂ (reducesEquivalent x) )
+    newmonadred = proj₁ (proj₂ (reducesEquivalent monadred))
+    newfunred   = proj₁ (proj₂ (reducesEquivalent funred ))
+    newbodyred  = proj₁ (proj₂ (reducesEquivalent bodyred ))
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing red))) = {! !}
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {val} {.(do<- _ ⁀ _)} (↓doJust red red₁))) = {! !}
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing red))) = {! !}
 
--- reducesSameTopLvl {c} {.𝕋maybe} {v} {(do<- monad ⁀ expr₂)} (↓doJust expr expr₁) = ↓bindJust expr (↓lam expr₂) expr₁
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 n} {do<- monad ⁀ body} (↓doJust mon↓just red))) = ↓bindJust funred inpred {! !}
-  where
-    funred = proj₁ (proj₂ (reducesEquivalent mon↓just))
-    inpred = proj₁ (proj₂ (reducesEquivalent (↓lam )))
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {do<- monad ⁀ body} (↓doJust mon↓just red))) = ↓bindJust funred inpred {! !}
-  where
-    funred = proj₁ (proj₂ (reducesEquivalent mon↓just))
-    inpred = proj₁ (proj₂ (reducesEquivalent (↓lam )))
-proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {do<- monad ⁀ body} (↓doNothing x))) = ↓bindNothing newred
-  where
-    newred = proj₁ (proj₂ (reducesEquivalent x) )
+-- State equivalence of that value with the original value
+proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {num𝕍 x} {lang} red)) = num𝕍x≅num𝕍y refl
+proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕓} {true𝕍} {lang} red)) = true𝕍≅true𝕍
+proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕓} {false𝕍} {lang} red)) = false𝕍≅false𝕍
+proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.(_ 𝕋⇒ _)} {clos𝕍 body x} {lang} red)) = tempEquiv body
+proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {nothing𝕍} {lang} red)) = nothing𝕍≅nothing𝕍
+proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {just𝕍 x} {lang} red)) = just𝕍≅just𝕍 refl
+-- proj₂ (proj₂ (reducesEquivalent red)) = ?
 
--- Prove that that value is equivalent to the original value
-proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕟} {num𝕍 x₁} {l} x)) = num𝕍x≅num𝕍y refl
-proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕓} {true𝕍} {l} x)) = true𝕍≅true𝕍
-proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕓} {false𝕍} {l} x)) = false𝕍≅false𝕍
-proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {l} x)) = nothing𝕍≅nothing𝕍
-proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 x₁} {l} x)) = just𝕍≅just𝕍 refl
-proj₂ (proj₂ (reducesEquivalent {c} {env} {(A 𝕋⇒ B)} {clos𝕍 body δ} {l} x)) = tempequiv body
-
-
--- reducesEquivalent {C} {.𝕋𝕟} {.(num𝕍 _)} {.(num𝕍 _)} {.(num _)} ↓num ↓num = num𝕍x≅num𝕍y refl
--- reducesEquivalent {C} {.𝕋𝕟} {(num𝕍 (x))} {(num𝕍 (y))} {(left ⊹ right)} (↓add ogr ogl) (↓add newr newl) =
---   plusisthesame refl refl
--- reducesEquivalent {C} {.𝕋𝕟} {(num𝕍 (x))} {(num𝕍 (y))} {(left ★ right)} (↓mul ogr ogl) (↓mul newr newl) =
---   multisthesame refl refl
--- reducesEquivalent {C} {.𝕋𝕓} {.true𝕍} {.true𝕍} {.true} ↓true ↓true = true𝕍≅true𝕍
--- reducesEquivalent {C} {.𝕋𝕓} {.false𝕍} {.false𝕍} {.false} ↓false ↓false = false𝕍≅false𝕍
--- reducesEquivalent {C} {A} {v} {w} {.(¿ _ ⦅ _ ∥ _ ⦆)} (↓¿true og og₁) (↓¿true new new₁) = reducesEquivalent og₁ new₁
--- reducesEquivalent {C} {A} {v} {w} {(¿ c ⦅ x ∥ y ⦆)} (↓¿true og og₁) (↓¿false new new₁) = {!  !}
--- reducesEquivalent {C} {A} {v} {w} {(¿ c ⦅ x ∥ y ⦆)} (↓¿false og og₁) (↓¿true new new₁) = {! !}
--- reducesEquivalent {C} {A} {v} {w} {.(¿ _ ⦅ _ ∥ _ ⦆)} (↓¿false og og₁) (↓¿false new new₁) = reducesEquivalent og₁ new₁
--- reducesEquivalent {C} {.(_ 𝕋⇒ _)} {.(clos𝕍 el)} {.(clos𝕍 (removeDo el))} {.(ƛ el)} (↓lam el) (↓lam .(removeDo el)) = {! !}
--- reducesEquivalent {C} {A} {v} {w} {(f · inp)} (↓app og og₁ og₂) (↓app new new₁ new₂) = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {.nothing𝕍} {.Nothing} ↓nothing ↓nothing = nothing𝕍≅nothing𝕍
--- reducesEquivalent {C} {.𝕋maybe} {(just𝕍 x)} {(just𝕍 y)} {(Just l)} (↓just og) (↓just new) = ? --reducesEquivalent og new
--- reducesEquivalent {C} {.𝕋maybe} {v} {w} {.(_ >>= _)} (↓bindJust og og₁ og₂) (↓bindJust new new₁ new₂) = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {v} {.nothing𝕍} {.(_ >>= _)} (↓bindJust og og₁ og₂) (↓bindNothing new) = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} {.(_ >>= _)} (↓bindNothing og) (↓bindJust new new₁ new₂) = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing og) (↓bindNothing new) = reducesEquivalent og new
--- reducesEquivalent {C} {.𝕋maybe} {v} {w} {.(do<- _ ⁀ _)} (↓doJust og og₁) (↓bindJust new new₁ new₂) = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {v} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doJust og og₁) (↓bindNothing new) = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} {.(do<- _ ⁀ _)} (↓doNothing og) (↓bindJust new new₁ new₂) = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing og) (↓bindNothing new) = reducesEquivalent og new
-
--- reducesEquivalent : {C : Ctx} {A : Ty} {v w : Value A} (L : C ⊢ A) → L ↓ v → ( v ≅ w ) → ( removeDo L ↓ w )
--- reducesEquivalent {C} {A} {v} {w} (Term x) () eq
--- reducesEquivalent {C} {.(_ 𝕋⇒ _)} {.(clos𝕍 l)} {w} (ƛ l) (↓lam .l) eq = {! !}
--- reducesEquivalent {C} {A} {v} {w} (l · l₁) (↓app og og₁ og₂) eq = {! !}
--- reducesEquivalent {C} {.𝕋𝕟} {.(num𝕍 x)} {w} (num x) ↓num eq = {! !}
--- reducesEquivalent {C} {.𝕋𝕟} {.(num𝕍 (_ + _))} {w} (l ⊹ l₁) (↓add og og₁) eq = {! !}
--- reducesEquivalent {C} {.𝕋𝕟} {.(num𝕍 (_ * _))} {w} (l ★ l₁) (↓mul og og₁) eq = {! !}
--- reducesEquivalent {C} {.𝕋𝕓} {.true𝕍} {w} true ↓true eq = {! ↓true !}
--- reducesEquivalent {C} {.𝕋𝕓} {.false𝕍} {w} false ↓false eq = {! !}
--- reducesEquivalent {C} {A} {v} {w} ¿ l ⦅ l₁ ∥ l₂ ⦆ (↓¿true og og₁) eq = {! !}
--- reducesEquivalent {C} {A} {v} {w} ¿ l ⦅ l₁ ∥ l₂ ⦆ (↓¿false og og₁) eq = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} Nothing ↓nothing eq = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.(just𝕍 _)} {w} (Just l) (↓just og) eq = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {v} {w} (l >>= l₁) (↓bindJust og og₁ og₂) eq = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} (l >>= l₁) (↓bindNothing og) eq = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {v} {w} (do<- l ⁀ l₁) (↓doJust og og₁) eq = {! !}
--- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} (do<- l ⁀ l₁) (↓doNothing og) eq = {! !}
-
-
-
--- reducesEquivalent : {C : Ctx} {v w : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → ( (removeDo L) ↓ w ) × ( v ≅ w )
--- reducesEquivalent = ?
-
-
-
-
--- from jose
--- _≡ₑ_ : ∀ {aTy rTy} → Value (aTy 𝕋⇒ rTy) → Value ({!   !} 𝕋⇒ {!   !}) → Set 
+-- -- Construct the value which we will prove is equivalent and the result of `removeDo`
+-- proj₁ (reducesEquivalent {c} {env} {.𝕋𝕟} {num𝕍 n} {l} x) = num𝕍 n 
+-- proj₁ (reducesEquivalent {c} {env} {.𝕋𝕓} {true𝕍} {l} x) = true𝕍
+-- proj₁ (reducesEquivalent {c} {env} {.𝕋𝕓} {false𝕍} {l} x) = false𝕍
+-- proj₁ (reducesEquivalent {c} {env} {.(_ 𝕋⇒ _)} {clos𝕍 body δ} {l} x) = clos𝕍 (removeDo body) δ
+-- proj₁ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {l} x) = nothing𝕍
+-- proj₁ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 n} {l} x) = just𝕍 n
 --
--- data _≡ᵣ_ : ∀ {ty} → Value ty → Value (MaybeTy→ListTy ty) → Set where
---     NothingV≡ᵣNilV : ∀ {v} → NothingV {v} ≡ᵣ NilV
---     JustV≡ᵣConsV : ∀ {ty} {vₒ : Value ty} {vₙ} → vₒ ≡ᵣ vₙ  → JustV vₒ ≡ᵣ ConsV vₙ NilV
---     NilV≡ᵣNilV : ∀ {ty} {v : Value ty} → NilV {ty} ≡ᵣ NilV
---     ConsV≡ᵣConsV : ∀ {ty} {hₒ : Value ty} {tₒ} {hₙ} {tₙ} → hₒ ≡ᵣ hₙ → tₒ ≡ᵣ tₙ → ConsV hₒ tₒ ≡ᵣ ConsV hₙ tₙ
---     LeftV≡ᵣLeftV : ∀ {ty₁ ty₂} {vₒ : Value (EitherTy ty₁ ty₂)} {vₙ} → vₒ ≡ᵣ vₙ  → LeftV {B = ty₂} vₒ ≡ᵣ LeftV vₙ
---     RightV≡ᵣRightV : ∀ {ty₁ ty₂} {vₒ : Value (EitherTy ty₁ ty₂)} {vₙ} → vₒ ≡ᵣ vₙ  → RightV {A = ty₁} vₒ ≡ᵣ RightV vₙ
---     ClosV≡ᵣClosV : {!   !} → ClosV {!   !} {!   !} ≡ᵣ ClosV {!   !} {!   !}
+-- -- Prove that the refactored function reduces to that value
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} ↓num)) = ↓num
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕟} {(num𝕍 (res))} {(left ⊹ right)} (↓add x y))) = ↓add newleftred newrightred
+--   where
+--     -- leftval  = valuetonumber ( proj₁ (reducesEquivalent x) )
+--     -- rightval = valuetonumber ( proj₁ (reducesEquivalent x) )
+--     newleftred  = proj₁ ( proj₂ (reducesEquivalent x) )
+--     newrightred = proj₁ ( proj₂ (reducesEquivalent y) )
+--     -- leftequiv  = proj₂ ( proj₂ (reducesEquivalent x) )
+--     -- rightequiv = proj₂ ( proj₂ (reducesEquivalent y) )
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕟} {(num𝕍 (res))} {(left ★ right)} (↓mul x y))) = ↓mul newleftred newrightred
+--   where
+--     newleftred  = proj₁ ( proj₂ (reducesEquivalent x) )
+--     newrightred = proj₁ ( proj₂ (reducesEquivalent y) )
+-- -- proj₁ (proj₂ (reducesEquivalent {c} {env} {ty} {val} {lang} ↓true)) = {! !}
+-- -- proj₁ (proj₂ (reducesEquivalent {c} {env} {ty} {val} {lang} ↓false)) = {! !}
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.(_ 𝕋⇒ _)} {closure} {lang} (↓lam))) = ↓lam 
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {ty} {val} {(fun · inp)} (↓app funR inpR red))) = ↓app funred inpred {!  !}
+--   where
+--     funred = proj₁ (proj₂ (reducesEquivalent funR))
+--     inpred = proj₁ (proj₂ (reducesEquivalent inpR))
+--     totred = proj₁ (proj₂ (reducesEquivalent red))
+--     inpeqv = proj₂ (proj₂ (reducesEquivalent inpR))
+--     inpval = proj₁ (reducesEquivalent inpR)
+--     -- idea: postulate some proof that in equivalent input⸴ substitution maintains equivalence
+--     -- alternatively: switch to environments
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {𝕋maybe} {nothing𝕍} {Nothing} ↓nothing)) = ↓nothing
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {(just𝕍 n)} {(Just expr)} (↓just x))) = ↓just newred
+--   where
+--     newred = proj₁ (proj₂ (reducesEquivalent x))
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 n} {(monad >>= lam)} (↓bindJust mon↓just lam↓body red))) = ↓bindJust funred inpred {! !}
+--   where
+--     funred = proj₁ (proj₂ (reducesEquivalent mon↓just))
+--     inpred = proj₁ (proj₂ (reducesEquivalent lam↓body))
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {(monad >>= lam)} (↓bindJust mon↓just lam↓body red))) = ↓bindJust funred inpred {! !}
+--   where
+--     funred = proj₁ (proj₂ (reducesEquivalent mon↓just))
+--     inpred = proj₁ (proj₂ (reducesEquivalent lam↓body))
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {(monad >>= lam)} (↓bindNothing x))) = ↓bindNothing newred
+--   where
+--     newred = proj₁ (proj₂ (reducesEquivalent x) )
 --
--- _≡ₑ_ = {!   !}
-
-
-
-
-
+-- -- reducesSameTopLvl {c} {.𝕋maybe} {v} {(do<- monad ⁀ expr₂)} (↓doJust expr expr₁) = ↓bindJust expr (↓lam expr₂) expr₁
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 n} {do<- monad ⁀ body} (↓doJust mon↓just red))) = ↓bindJust funred inpred {! !}
+--   where
+--     funred = proj₁ (proj₂ (reducesEquivalent mon↓just))
+--     inpred = proj₁ (proj₂ (reducesEquivalent (↓lam )))
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {do<- monad ⁀ body} (↓doJust mon↓just red))) = ↓bindJust funred inpred {! !}
+--   where
+--     funred = proj₁ (proj₂ (reducesEquivalent mon↓just))
+--     inpred = proj₁ (proj₂ (reducesEquivalent (↓lam )))
+-- proj₁ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {do<- monad ⁀ body} (↓doNothing x))) = ↓bindNothing newred
+--   where
+--     newred = proj₁ (proj₂ (reducesEquivalent x) )
+--
+-- -- Prove that that value is equivalent to the original value
+-- proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕟} {num𝕍 x₁} {l} x)) = num𝕍x≅num𝕍y refl
+-- proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕓} {true𝕍} {l} x)) = true𝕍≅true𝕍
+-- proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋𝕓} {false𝕍} {l} x)) = false𝕍≅false𝕍
+-- proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {l} x)) = nothing𝕍≅nothing𝕍
+-- proj₂ (proj₂ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 x₁} {l} x)) = just𝕍≅just𝕍 refl
+-- proj₂ (proj₂ (reducesEquivalent {c} {env} {(A 𝕋⇒ B)} {clos𝕍 body δ} {l} x)) = tempequiv body
+--
+--
+-- -- reducesEquivalent {C} {.𝕋𝕟} {.(num𝕍 _)} {.(num𝕍 _)} {.(num _)} ↓num ↓num = num𝕍x≅num𝕍y refl
+-- -- reducesEquivalent {C} {.𝕋𝕟} {(num𝕍 (x))} {(num𝕍 (y))} {(left ⊹ right)} (↓add ogr ogl) (↓add newr newl) =
+-- --   plusisthesame refl refl
+-- -- reducesEquivalent {C} {.𝕋𝕟} {(num𝕍 (x))} {(num𝕍 (y))} {(left ★ right)} (↓mul ogr ogl) (↓mul newr newl) =
+-- --   multisthesame refl refl
+-- -- reducesEquivalent {C} {.𝕋𝕓} {.true𝕍} {.true𝕍} {.true} ↓true ↓true = true𝕍≅true𝕍
+-- -- reducesEquivalent {C} {.𝕋𝕓} {.false𝕍} {.false𝕍} {.false} ↓false ↓false = false𝕍≅false𝕍
+-- -- reducesEquivalent {C} {A} {v} {w} {.(¿ _ ⦅ _ ∥ _ ⦆)} (↓¿true og og₁) (↓¿true new new₁) = reducesEquivalent og₁ new₁
+-- -- reducesEquivalent {C} {A} {v} {w} {(¿ c ⦅ x ∥ y ⦆)} (↓¿true og og₁) (↓¿false new new₁) = {!  !}
+-- -- reducesEquivalent {C} {A} {v} {w} {(¿ c ⦅ x ∥ y ⦆)} (↓¿false og og₁) (↓¿true new new₁) = {! !}
+-- -- reducesEquivalent {C} {A} {v} {w} {.(¿ _ ⦅ _ ∥ _ ⦆)} (↓¿false og og₁) (↓¿false new new₁) = reducesEquivalent og₁ new₁
+-- -- reducesEquivalent {C} {.(_ 𝕋⇒ _)} {.(clos𝕍 el)} {.(clos𝕍 (removeDo el))} {.(ƛ el)} (↓lam el) (↓lam .(removeDo el)) = {! !}
+-- -- reducesEquivalent {C} {A} {v} {w} {(f · inp)} (↓app og og₁ og₂) (↓app new new₁ new₂) = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {.nothing𝕍} {.Nothing} ↓nothing ↓nothing = nothing𝕍≅nothing𝕍
+-- -- reducesEquivalent {C} {.𝕋maybe} {(just𝕍 x)} {(just𝕍 y)} {(Just l)} (↓just og) (↓just new) = ? --reducesEquivalent og new
+-- -- reducesEquivalent {C} {.𝕋maybe} {v} {w} {.(_ >>= _)} (↓bindJust og og₁ og₂) (↓bindJust new new₁ new₂) = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {v} {.nothing𝕍} {.(_ >>= _)} (↓bindJust og og₁ og₂) (↓bindNothing new) = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} {.(_ >>= _)} (↓bindNothing og) (↓bindJust new new₁ new₂) = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing og) (↓bindNothing new) = reducesEquivalent og new
+-- -- reducesEquivalent {C} {.𝕋maybe} {v} {w} {.(do<- _ ⁀ _)} (↓doJust og og₁) (↓bindJust new new₁ new₂) = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {v} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doJust og og₁) (↓bindNothing new) = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} {.(do<- _ ⁀ _)} (↓doNothing og) (↓bindJust new new₁ new₂) = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing og) (↓bindNothing new) = reducesEquivalent og new
+--
+-- -- reducesEquivalent : {C : Ctx} {A : Ty} {v w : Value A} (L : C ⊢ A) → L ↓ v → ( v ≅ w ) → ( removeDo L ↓ w )
+-- -- reducesEquivalent {C} {A} {v} {w} (Term x) () eq
+-- -- reducesEquivalent {C} {.(_ 𝕋⇒ _)} {.(clos𝕍 l)} {w} (ƛ l) (↓lam .l) eq = {! !}
+-- -- reducesEquivalent {C} {A} {v} {w} (l · l₁) (↓app og og₁ og₂) eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋𝕟} {.(num𝕍 x)} {w} (num x) ↓num eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋𝕟} {.(num𝕍 (_ + _))} {w} (l ⊹ l₁) (↓add og og₁) eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋𝕟} {.(num𝕍 (_ * _))} {w} (l ★ l₁) (↓mul og og₁) eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋𝕓} {.true𝕍} {w} true ↓true eq = {! ↓true !}
+-- -- reducesEquivalent {C} {.𝕋𝕓} {.false𝕍} {w} false ↓false eq = {! !}
+-- -- reducesEquivalent {C} {A} {v} {w} ¿ l ⦅ l₁ ∥ l₂ ⦆ (↓¿true og og₁) eq = {! !}
+-- -- reducesEquivalent {C} {A} {v} {w} ¿ l ⦅ l₁ ∥ l₂ ⦆ (↓¿false og og₁) eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} Nothing ↓nothing eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.(just𝕍 _)} {w} (Just l) (↓just og) eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {v} {w} (l >>= l₁) (↓bindJust og og₁ og₂) eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} (l >>= l₁) (↓bindNothing og) eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {v} {w} (do<- l ⁀ l₁) (↓doJust og og₁) eq = {! !}
+-- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} (do<- l ⁀ l₁) (↓doNothing og) eq = {! !}
+--
+--
+--
+-- -- reducesEquivalent : {C : Ctx} {v w : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → ( (removeDo L) ↓ w ) × ( v ≅ w )
+-- -- reducesEquivalent = ?
+--
+--
+--
+--
+-- -- from jose
+-- -- _≡ₑ_ : ∀ {aTy rTy} → Value (aTy 𝕋⇒ rTy) → Value ({!   !} 𝕋⇒ {!   !}) → Set 
+-- --
+-- -- data _≡ᵣ_ : ∀ {ty} → Value ty → Value (MaybeTy→ListTy ty) → Set where
+-- --     NothingV≡ᵣNilV : ∀ {v} → NothingV {v} ≡ᵣ NilV
+-- --     JustV≡ᵣConsV : ∀ {ty} {vₒ : Value ty} {vₙ} → vₒ ≡ᵣ vₙ  → JustV vₒ ≡ᵣ ConsV vₙ NilV
+-- --     NilV≡ᵣNilV : ∀ {ty} {v : Value ty} → NilV {ty} ≡ᵣ NilV
+-- --     ConsV≡ᵣConsV : ∀ {ty} {hₒ : Value ty} {tₒ} {hₙ} {tₙ} → hₒ ≡ᵣ hₙ → tₒ ≡ᵣ tₙ → ConsV hₒ tₒ ≡ᵣ ConsV hₙ tₙ
+-- --     LeftV≡ᵣLeftV : ∀ {ty₁ ty₂} {vₒ : Value (EitherTy ty₁ ty₂)} {vₙ} → vₒ ≡ᵣ vₙ  → LeftV {B = ty₂} vₒ ≡ᵣ LeftV vₙ
+-- --     RightV≡ᵣRightV : ∀ {ty₁ ty₂} {vₒ : Value (EitherTy ty₁ ty₂)} {vₙ} → vₒ ≡ᵣ vₙ  → RightV {A = ty₁} vₒ ≡ᵣ RightV vₙ
+-- --     ClosV≡ᵣClosV : {!   !} → ClosV {!   !} {!   !} ≡ᵣ ClosV {!   !} {!   !}
+-- --
+-- -- _≡ₑ_ = {!   !}
+--
+--
+--
+--
+--
