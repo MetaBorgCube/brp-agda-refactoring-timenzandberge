@@ -21,12 +21,8 @@ data _≅_ : (v : Value ty) → (w : Value ty) → Set where
     → x ≡ y
     → (num𝕍 x) ≅ (num𝕍 y)
   true𝕍≅true𝕍 : true𝕍 ≅ true𝕍
-  -- true𝕍 ≅ false𝕍 : ⊥
-  -- false𝕍 ≅ true𝕍 : ⊥
   false𝕍≅false𝕍 : false𝕍 ≅ false𝕍
   nothing𝕍≅nothing𝕍 : nothing𝕍 ≅ nothing𝕍
-  -- nothing𝕍 ≅ just𝕍 x : ⊥
-  -- just𝕍 x ≅ nothing𝕍 : ⊥
   just𝕍≅just𝕍 : {x y : ℕ} → x ≡ y → (just𝕍 x) ≅ (just𝕍 y)
   clos𝕍≅clos𝕍 : {aTy rTy : Ty} {f g : C , aTy ⊢ rTy}
     → ∀ { ArgV : Value aTy }
