@@ -394,11 +394,13 @@ _[_] {Γ} {A} {B} N M =  subst {Γ ⸴ B} {Γ} σ {A} N
 --   ↓doNothing : ∀ {Γ} {monad : Γ ⊢ 𝕋maybe} {expr : Γ ⸴ 𝕋𝕟 ⊢ 𝕋maybe}
 --     → monad ↓ nothing𝕍
 --     → (do<- monad ⁀ expr) ↓ nothing𝕍
+
 private
   variable Γ Δ : Ctx
   variable γ : Env Γ
   variable δ : Env Δ
   variable A B : Ty
+
 data _⊨_↓_ : Env Γ → (Γ ⊢ A) → Value A → Set where
   ↓var :
     {x : Γ ∋ A}

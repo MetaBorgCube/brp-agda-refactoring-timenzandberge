@@ -5,7 +5,7 @@ open import Data.Product public
 open import Data.Bool hiding ( _≟_ )
 -- import Agda.Builtin.Unit
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; sym; cong; cong-app) public
+open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst) public
 open Eq.≡-Reasoning using (begin_ ; _≡⟨⟩_; step-≡; _∎)
 open import Data.Nat
 open import Data.Nat.Properties
@@ -43,6 +43,7 @@ variable δ : Env Δ
 -- --     ⊤
 
 
+
 removeDo : Γ ⊢ A → Γ ⊢ A
 removeDo (Term x) = Term x
 removeDo (ƛ L) = ƛ (removeDo L)
@@ -71,20 +72,23 @@ removeDoValue (clos𝕍 body γ) = clos𝕍 (removeDo body) (removeDoEnv γ)
 removeDoValue nothing𝕍 = nothing𝕍
 removeDoValue (just𝕍 x) = just𝕍 x
 
-removeDoTopLvl : Γ ⊢ A → Γ ⊢ A
-removeDoTopLvl (Term x) = Term x
-removeDoTopLvl (ƛ L) = ƛ ( L)
-removeDoTopLvl (L · M) = ( L) · ( M)
-removeDoTopLvl (num x) = num x
-removeDoTopLvl (L ⊹ M) = ( L) ⊹ ( M)
-removeDoTopLvl (L ★ M) = ( L) ★ ( M)
-removeDoTopLvl true = true
-removeDoTopLvl false = false
--- removeDoTopLvl ¿ L ⦅ T ∥ F ⦆ = ¿  L ⦅  T ∥  F ⦆
-removeDoTopLvl Nothing = Nothing
-removeDoTopLvl (Just L) = Just ( L)
-removeDoTopLvl (M >>= F) = ( M) >>= ( F)
-removeDoTopLvl (do<- M ⁀ F) = ( M) >>= (ƛ ( F))
+removeDoTopLvl : ∅ ⊢ A → ∅ ⊢ A
+removeDoTopLvl x = removeDo x
+
+-- removeDoTopLvl : Γ ⊢ A → Γ ⊢ A
+-- removeDoTopLvl (Term x) = Term x
+-- removeDoTopLvl (ƛ L) = ƛ ( L)
+-- removeDoTopLvl (L · M) = ( L) · ( M)
+-- removeDoTopLvl (num x) = num x
+-- removeDoTopLvl (L ⊹ M) = ( L) ⊹ ( M)
+-- removeDoTopLvl (L ★ M) = ( L) ★ ( M)
+-- removeDoTopLvl true = true
+-- removeDoTopLvl false = false
+-- -- removeDoTopLvl ¿ L ⦅ T ∥ F ⦆ = ¿  L ⦅  T ∥  F ⦆
+-- removeDoTopLvl Nothing = Nothing
+-- removeDoTopLvl (Just L) = Just ( L)
+-- removeDoTopLvl (M >>= F) = ( M) >>= ( F)
+-- removeDoTopLvl (do<- M ⁀ F) = ( M) >>= (ƛ ( F))
 
 data _≅_ : (v : Value ty) → (w : Value ty) → Set where
   num𝕍x≅num𝕍y : ∀ {x y}
@@ -203,28 +207,69 @@ plusisthesame {vl} {vr} {vl} {vr} refl refl = num𝕍x≅num𝕍y refl
 multisthesame : ∀ {vl vr vln vrn} → vl ≡ vln → vr ≡ vrn → num𝕍 (vl * vr) ≅ num𝕍 (vln * vrn)
 multisthesame {vl} {vr} {vl} {vr} refl refl = num𝕍x≅num𝕍y refl
 
+valEquiv : (x : Value A) → x ≅ (removeDoValue x)
+valEquiv (num𝕍 x) = num𝕍x≅num𝕍y refl
+valEquiv true𝕍 = true𝕍≅true𝕍
+valEquiv false𝕍 = false𝕍≅false𝕍
+valEquiv (clos𝕍 body x) = tempEquiv body
+valEquiv nothing𝕍 = nothing𝕍≅nothing𝕍
+valEquiv (just𝕍 x) = just𝕍≅just𝕍 refl
+
+environmentRemainsEquivalent : {p : Γ ∋ A} → (valueLookup γ p) ≅ (valueLookup (removeDoEnv γ) p)
+environmentRemainsEquivalent {(_ ⸴ A)} {A} γ@{_ ⸴′ x} {Z} = valEquiv x -- (valueLookup γ Z) ≅ (valueLookup (removeDoEnv γ) Z)
+environmentRemainsEquivalent {(Γ ⸴ _)} {A} {γ ⸴′ _} {S p} = environmentRemainsEquivalent {Γ} {A} {γ} {p}
+
+environmentRefactorsInternalValue : {p : Γ ∋ A} → (removeDoValue (valueLookup γ p)) ≡ (valueLookup (removeDoEnv γ) p)
+environmentRefactorsInternalValue {(_ ⸴ A)} {A} {γ ⸴′ x} {Z} = refl
+environmentRefactorsInternalValue {(Γ ⸴ _)} {A} {γ ⸴′ _} {S p} = environmentRefactorsInternalValue {Γ} {A} {γ} {p}
+
+-- TODO prove that the full terms are equal given that environmentRefactorsInternalValue holds
+helpgod : {p : Γ ∋ A} → removeDoEnv γ ⊨ removeDo (Term p) ↓ valueLookup (removeDoEnv γ) p ≡ removeDoEnv γ ⊨ removeDo (Term p) ↓ removeDoValue (valueLookup γ p)
+helpgod {_ ⸴ _} {_} {_ ⸴′ _} {Z} = refl
+helpgod {Γ ⸴ _} {A} {γ ⸴′ _} {S p} = ? -- TODO: try cong or subst -- helpgod {Γ} {A} {γ} {p}
+
+
+-- helpmeplease : {Γ : Ctx} {A : Ty} {γ : Env Γ} {p : Γ ∋ A} → removeDoEnv γ ⊨ removeDo (Term p) ↓ valueLookup (removeDoEnv γ) p → removeDoEnv γ ⊨ removeDo (Term p) ↓ removeDoValue (valueLookup γ p)
+-- helpmeplease {Γ} {A} {γ} {p} x = {! x !}
+
+
+reducesEquivalentOther : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → (removeDoEnv γ) ⊨ (removeDo L) ↓ (removeDoValue v)
+reducesEquivalentOther {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}) = ?
+  where
+  valLoopup = valueLookup (removeDoEnv γ) p
+  retval = removeDoValue (valueLookup γ p)
+  proof = environmentRefactorsInternalValue {Γ} {A} {γ} {p}
+  red = ↓var {Γ} {A} {removeDoEnv γ} {p}
+  -- helpme = subst (λ x → x) {! proof !} (red)
+reducesEquivalentOther {Γ} {γ} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} ↓num = ↓num
+reducesEquivalentOther {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ⊹ _)} (↓add red red₁) = ↓add (reducesEquivalentOther red) (reducesEquivalentOther red₁)
+reducesEquivalentOther {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ★ _)} (↓mul red red₁) = ↓mul (reducesEquivalentOther red) (reducesEquivalentOther red₁)
+reducesEquivalentOther {Γ} {γ} {.(_ 𝕋⇒ _)} {.(clos𝕍 _ γ)} {.(ƛ _)} ↓lam = ↓lam
+reducesEquivalentOther {Γ} {γ} {A} {v} {.(_ · _)} (↓app red red₁ red₂) = ↓app (reducesEquivalentOther red) (reducesEquivalentOther red₁) (reducesEquivalentOther red₂)
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.Nothing} ↓nothing = ↓nothing
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.(just𝕍 _)} {.(Just _)} (↓just red) = ↓just (reducesEquivalentOther red)
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {v} {.(_ >>= _)} (↓bindJust red red₁ red₂) = {! !}
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing red) = ↓bindNothing (reducesEquivalentOther red)
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {v} {.(do<- _ ⁀ _)} (↓doJust red red₁) = {! !}
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing red) = ↓bindNothing (reducesEquivalentOther red)
+
 reducesEquivalent : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → ∃[ w ] ( ((removeDoEnv γ) ⊨ (removeDo L) ↓ w) × ( v ≅ w ) )
 
--- Produce the value that the refactored function should produce
-proj₁ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} ↓var) with val
-... | num𝕍 x = num𝕍 x
-... | true𝕍 = true𝕍
-... | false𝕍 = false𝕍
-... | clos𝕍 body x = clos𝕍 {! !} {! !}
-... | nothing𝕍 = nothing𝕍
-... | just𝕍 x = just𝕍 x
-proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕟} {num𝕍 x} {lang} red) = num𝕍 x
-proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕓} {true𝕍} {lang} red) = true𝕍
-proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕓} {false𝕍} {lang} red) = false𝕍
-proj₁ (reducesEquivalent {Γ} {γ} {(D 𝕋⇒ E)} {clos𝕍 body δ} {lang} red) = clos𝕍 (removeDo body) (removeDoEnv δ)
-proj₁ (reducesEquivalent {Γ} {γ} {𝕋maybe} {nothing𝕍} {lang} red) = nothing𝕍
-proj₁ (reducesEquivalent {Γ} {γ} {𝕋maybe} {just𝕍 x} {lang} red) = just𝕍 x
+-- -- Produce the value that the refactored function should produce
+-- proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕟} {num𝕍 x} {lang} red) = num𝕍 x
+-- proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕓} {true𝕍} {lang} red) = true𝕍
+-- proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕓} {false𝕍} {lang} red) = false𝕍
+-- proj₁ (reducesEquivalent {Γ} {γ} {(D 𝕋⇒ E)} {clos𝕍 body δ} {lang} red) = (valueLookup γ ?) -- clos𝕍 (removeDo body) (removeDoEnv δ)
+-- proj₁ (reducesEquivalent {Γ} {γ} {𝕋maybe} {nothing𝕍} {lang} red) = nothing𝕍
+-- proj₁ (reducesEquivalent {Γ} {γ} {𝕋maybe} {just𝕍 x} {lang} red) = just𝕍 x
+-- proj₁ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} (↓var {Γ} {A} {γ} {p})) = valueLookup (removeDoEnv γ) p
+proj₁ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} red) = removeDoValue (val) -- (valueLookup (removeDoEnv γ) ?)
 
 -- proj₁ (proj₂ (reducesEquivalent red )) = ?
 
 -- Provide the reduction to that value
-proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}))) = ↓var {Γ} {A} { ? } { ? }
-proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} ↓num)) = ↓num
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}))) = {! !} -- ↓var {Γ} {A} {removeDoEnv γ} {p} 
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} (↓num ))) = ↓num
 proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ⊹ _)} (↓add x y))) = ↓add newleftred newrightred
   where
     newleftred  = proj₁ ( proj₂ (reducesEquivalent x) )
@@ -234,7 +279,7 @@ proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ 
     newleftred  = proj₁ ( proj₂ (reducesEquivalent x) )
     newrightred = proj₁ ( proj₂ (reducesEquivalent y) )
 proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {(A 𝕋⇒ B)} {.(clos𝕍 _ γ)} {.(ƛ _)} (↓lam {Γ} {A} {B} {γ} {body} ))) = ↓lam {Γ} {A} {B} {removeDoEnv γ} 
-proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {val} {(fun · inp)} (↓app funred inpred resred))) = ↓app newfunred newinpred {! !}
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {val} {(fun · inp)} (↓app funred inpred resred))) = {! !} -- ↓app newfunred newinpred {! !}
   where
     newfunred = proj₁ (proj₂ (reducesEquivalent funred))
     newinpred = proj₁ (proj₂ (reducesEquivalent inpred))
@@ -242,10 +287,10 @@ proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {val} {(fun · inp)} (↓app f
     newfunval = proj₁ (reducesEquivalent funred)
     newresred = proj₁ (proj₂ (reducesEquivalent {(Γ ⸴ A)} {(γ ⸴′ {! !})} {! !}))
 proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.Nothing} ↓nothing)) = ↓nothing
-proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {.(just𝕍 _)} {.(Just _)} (↓just intred))) = ↓just newintred
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {.(just𝕍 _)} {.(Just _)} (↓just intred))) = {! !} -- ↓just newintred
   where
     newintred = proj₁ (proj₂ (reducesEquivalent intred))
-proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {val} {.(_ >>= _)} (↓bindJust monadred funred bodyred))) = ↓bindJust newmonadred newfunred {!   !}
+proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {val} {.(_ >>= _)} (↓bindJust monadred funred bodyred))) = {! !} --  ↓bindJust newmonadred newfunred {!   !}
   where
     newmonadred = proj₁ (proj₂ (reducesEquivalent monadred))
     newfunred   = proj₁ (proj₂ (reducesEquivalent funred ))
@@ -255,12 +300,13 @@ proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {val} {.(do<- _ ⁀ _
 proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing red))) = {! !}
 
 -- State equivalence of that value with the original value
-proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {num𝕍 x} {lang} red)) = num𝕍x≅num𝕍y refl
-proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕓} {true𝕍} {lang} red)) = true𝕍≅true𝕍
-proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕓} {false𝕍} {lang} red)) = false𝕍≅false𝕍
-proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.(_ 𝕋⇒ _)} {clos𝕍 body x} {lang} red)) = tempEquiv body
-proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {nothing𝕍} {lang} red)) = nothing𝕍≅nothing𝕍
-proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {just𝕍 x} {lang} red)) = just𝕍≅just𝕍 refl
+-- proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {num𝕍 x} {lang} red)) = num𝕍x≅num𝕍y refl
+-- proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕓} {true𝕍} {lang} red)) = true𝕍≅true𝕍
+-- proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕓} {false𝕍} {lang} red)) = false𝕍≅false𝕍
+-- proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.(_ 𝕋⇒ _)} {clos𝕍 body x} {lang} red)) = tempEquiv body
+-- proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {nothing𝕍} {lang} red)) = nothing𝕍≅nothing𝕍
+-- proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {just𝕍 x} {lang} red)) = just𝕍≅just𝕍 refl
+proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} red)) = valEquiv val
 -- proj₂ (proj₂ (reducesEquivalent red)) = ?
 
 -- -- Construct the value which we will prove is equivalent and the result of `removeDo`
@@ -403,3 +449,5 @@ proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋maybe} {just𝕍 x} {lang} r
 --
 --
 --
+reducesEquivalentTopLvl : {A : Ty} {v : Value A} {L : ∅ ⊢ A} → ∅′ ⊨ L ↓ v → ∃[ w ] ( (∅′ ⊨ (removeDoTopLvl L) ↓ w) × ( v ≅ w ) )
+reducesEquivalentTopLvl x = reducesEquivalent x
