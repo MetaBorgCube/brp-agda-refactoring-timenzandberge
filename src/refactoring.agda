@@ -10,8 +10,8 @@ open Eq.≡-Reasoning using (begin_ ; _≡⟨⟩_; step-≡; _∎)
 open import Data.Nat
 open import Data.Nat.Properties
 
-variable A B ty : Ty
-variable Γ Δ C : Ctx
+variable ty : Ty
+variable C : Ctx
 variable v : Value A
 variable L : Γ ⊢ A
 variable γ : Env Γ
@@ -55,7 +55,7 @@ removeDo (L ★ M) = (removeDo L) ★ (removeDo M)
 removeDo true = true
 removeDo false = false
 -- removeDo ¿ L ⦅ T ∥ F ⦆ = ¿ removeDo L ⦅ removeDo T ∥ removeDo F ⦆
-removeDo Nothing = Nothing
+removeDo (Nothing A) = (Nothing A)
 removeDo (Just L) = Just (removeDo L)
 removeDo (M >>= F) = (removeDo M) >>= (removeDo F)
 removeDo (do<- M ⁀ F) = (removeDo M) >>= (ƛ (removeDo F))
@@ -69,7 +69,11 @@ removeDoEnv ∅′ = ∅′
 removeDoEnv (γ ⸴′ x) = (removeDoEnv γ) ⸴′ (removeDoValue x)
 
 removeDoValue (clos𝕍 body γ) = clos𝕍 (removeDo body) (removeDoEnv γ)
-removeDoValue val = val
+removeDoValue (just𝕍 val) = just𝕍 (removeDoValue val)
+removeDoValue (num𝕍 x) = num𝕍 x
+removeDoValue true𝕍 = true𝕍
+removeDoValue false𝕍 = false𝕍
+removeDoValue nothing𝕍 = nothing𝕍
 -- removeDoValue (num𝕍 x) = num𝕍 x
 -- removeDoValue true𝕍 = true𝕍
 -- removeDoValue false𝕍 = false𝕍
@@ -122,21 +126,21 @@ private
   plus : ∅ ⊢ 𝕋𝕟 𝕋⇒ 𝕋𝕟 𝕋⇒ 𝕋𝕟
   plus = ƛ (ƛ ( ( # 1 ) ⊹  # 0 ))
 
-  bindEx : ∅ ⊢ 𝕋maybe
+  bindEx : ∅ ⊢ 𝕋maybe 𝕋𝕟
   bindEx = (Just (num 1)) >>= ƛ (Just (num 1 ⊹ # 0 )) 
 
-  doEx : ∅ ⊢ 𝕋maybe
+  doEx : ∅ ⊢ 𝕋maybe 𝕋𝕟
   doEx =
     do<- Just (num 1) ⁀
     Just ((num 1) ⊹ # 0)
 
-  doChain : ∅ ⊢ 𝕋maybe
+  doChain : ∅ ⊢ 𝕋maybe 𝕋𝕟
   doChain =
     do<- Just (num 1) ⁀
     do<- Just (num 1) ⁀
     Just ( # 1 ⊹ # 0)
 
-  bindChain : ∅ ⊢ 𝕋maybe
+  bindChain : ∅ ⊢ 𝕋maybe 𝕋𝕟
   bindChain =
     Just (num 1) >>=
     (ƛ (Just (num 1) >>=
@@ -254,12 +258,12 @@ reducesEquivalentOther {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ⊹ _)} (↓a
 reducesEquivalentOther {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ★ _)} (↓mul red red₁) = ↓mul (reducesEquivalentOther red) (reducesEquivalentOther red₁)
 reducesEquivalentOther {Γ} {γ} {.(_ 𝕋⇒ _)} {.(clos𝕍 _ γ)} {.(ƛ _)} ↓lam = ↓lam
 reducesEquivalentOther {Γ} {γ} {A} {v} {.(_ · _)} (↓app red red₁ red₂) = ↓app (reducesEquivalentOther red) (reducesEquivalentOther red₁) (reducesEquivalentOther red₂)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.Nothing} ↓nothing = ↓nothing
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.(just𝕍 _)} {.(Just _)} (↓just red) = ↓just (reducesEquivalentOther red)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {v} {(monad >>= fun)} (↓bindJust mon↓just fun↓lam body↓val) = ↓bindJust (reducesEquivalentOther mon↓just) (reducesEquivalentOther fun↓lam) (reducesEquivalentOther body↓val)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing red) = ↓bindNothing (reducesEquivalentOther red)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {v} {(do<- mon ⁀ expr)} (↓doJust mon↓just body↓val) = ↓bindJust (reducesEquivalentOther mon↓just) (reducesEquivalentOther (↓lam)) (reducesEquivalentOther body↓val)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing red) = ↓bindNothing (reducesEquivalentOther red)
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.Nothing A} ↓nothing = ↓nothing
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.(just𝕍 _)} {.(Just _)} (↓just red) = ↓just (reducesEquivalentOther red)
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {v} {(monad >>= fun)} (↓bindJust mon↓just fun↓lam body↓val) = ↓bindJust (reducesEquivalentOther mon↓just) (reducesEquivalentOther fun↓lam) (reducesEquivalentOther body↓val)
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing red) = ↓bindNothing (reducesEquivalentOther red)
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {v} {(do<- mon ⁀ expr)} (↓doJust mon↓just body↓val) = ↓bindJust (reducesEquivalentOther mon↓just) (reducesEquivalentOther (↓lam)) (reducesEquivalentOther body↓val)
+reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing red) = ↓bindNothing (reducesEquivalentOther red)
 
 -- reducesEquivalent : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → ∃[ w ] ( ((removeDoEnv γ) ⊨ (removeDo L) ↓ w) × ( v ≅ w ) )
 --
@@ -469,7 +473,7 @@ reducesEquivalentOther {Γ} {γ} {.𝕋maybe} {.nothing𝕍} {.(do<- _ ⁀ _)} (
 #do (r ★ l) = #do r + #do l
 #do true = zero
 #do false = zero
-#do Nothing = zero
+#do (Nothing A) = zero
 #do (Just x) = #do x
 #do (l >>= r) = #do l + #do r
 #do (do<- l ⁀ r) = suc (#do l + #do r)
@@ -479,7 +483,7 @@ removesAllDoes : (L : Γ ⊢ A) → #do (removeDo L) ≡ zero
 private
   dualinternalize : (l : Γ ⊢ A) (r : Δ ⊢ B) → #do (removeDo l) + #do (removeDo r) ≡ zero
   dualinternalize l r = begin step-≡ (#do (removeDo l) + #do (removeDo r)) (step-≡ (zero + #do (removeDo r)) (zero ∎) (removesAllDoes r)) (cong (_+ #do (removeDo r)) (removesAllDoes l))
-  -- The original code written before Agda hole giving rewrite it into a way that Agda does accept it
+  -- The original code before Agda hole giving rewrite it into a way that Agda does accept it
   -- begin
   --   #do (removeDo l) + #do (removeDo r)
   -- ≡⟨ cong (_+ #do (removeDo r)) (removesAllDoes l) ⟩
@@ -487,7 +491,6 @@ private
   -- ≡⟨ removesAllDoes r ⟩
   --   zero
   -- ∎
-
 
 removesAllDoes (Term x) = refl
 removesAllDoes (ƛ L) = removesAllDoes L
@@ -497,7 +500,54 @@ removesAllDoes (l ⊹ r) = dualinternalize l r
 removesAllDoes (l ★ r) = dualinternalize l r
 removesAllDoes true = refl
 removesAllDoes false = refl
-removesAllDoes Nothing = refl
+removesAllDoes (Nothing A) = refl
 removesAllDoes (Just L) = removesAllDoes L
 removesAllDoes (l >>= r) = dualinternalize l r
 removesAllDoes (do<- l ⁀ r) = dualinternalize l r
+
+
+isIdempotent : (L : Γ ⊢ A) → (removeDo (removeDo L)) ≡ (removeDo L)
+isIdempotent (Term x) = refl
+isIdempotent (ƛ l) = begin
+    ƛ removeDo (removeDo l)
+  ≡⟨ cong (ƛ_) (isIdempotent l) ⟩
+    ƛ removeDo l
+  ∎
+isIdempotent (l · r) = begin step-≡ (removeDo (removeDo (l · r))) (step-≡ (removeDo (removeDo l · removeDo r)) (step-≡ (removeDo (removeDo l) · removeDo (removeDo r)) (step-≡ (removeDo l · removeDo (removeDo r)) (step-≡ (removeDo l · removeDo r) (removeDo (l · r) ∎) refl) (cong (λ { x → removeDo l · x }) (isIdempotent r))) (cong (_· removeDo (removeDo r)) (isIdempotent l))) refl) refl
+isIdempotent (num x) = refl
+isIdempotent (l ⊹ r) = begin step-≡ (removeDo (removeDo (l ⊹ r))) (step-≡ (removeDo (removeDo l ⊹ removeDo r)) (step-≡ (removeDo (removeDo l) ⊹ removeDo (removeDo r)) (step-≡ (removeDo l ⊹ removeDo (removeDo r)) (step-≡ (removeDo l ⊹ removeDo r) (removeDo (l ⊹ r) ∎) refl) (cong (λ { x → removeDo l ⊹ x }) (isIdempotent r))) (cong (_⊹ removeDo (removeDo r)) (isIdempotent l))) refl) refl
+isIdempotent (l ★ r) = begin
+      removeDo (removeDo (l ★ r))
+    ≡⟨ refl ⟩
+      removeDo ((removeDo l) ★ (removeDo r))
+    ≡⟨ refl ⟩
+      (removeDo (removeDo l)) ★ (removeDo (removeDo r))
+    ≡⟨ cong (_★ removeDo (removeDo r)) (isIdempotent l) ⟩
+      (removeDo l) ★ (removeDo (removeDo r))
+    ≡⟨ cong (λ { x → removeDo l ★ x }) (isIdempotent r) ⟩
+      (removeDo l) ★ (removeDo r)
+    ≡⟨ refl ⟩
+      removeDo (l ★ r)
+    ∎
+isIdempotent true = refl
+isIdempotent false = refl
+isIdempotent (Nothing A) = refl
+isIdempotent (Just l) = begin
+    Just (removeDo (removeDo l))
+  ≡⟨ cong Just (isIdempotent l) ⟩
+    Just (removeDo l)
+  ∎
+isIdempotent (l >>= r) = begin step-≡ (removeDo (removeDo (l >>= r))) (step-≡ (removeDo (removeDo l >>= removeDo r)) (step-≡ (removeDo (removeDo l) >>= removeDo (removeDo r)) (step-≡ (removeDo l >>= removeDo (removeDo r)) (step-≡ (removeDo l >>= removeDo r) (removeDo (l >>= r) ∎) refl) (cong (λ { x → removeDo l >>= x }) (isIdempotent r))) (cong (_>>= removeDo (removeDo r)) (isIdempotent l))) refl) refl
+isIdempotent (do<- l ⁀ r) = begin
+    removeDo (removeDo (do<- l ⁀ r))
+  ≡⟨ refl ⟩
+    removeDo (do<- (removeDo l) ⁀ (removeDo r))
+  ≡⟨ refl ⟩
+    (removeDo (removeDo l)) >>= (ƛ removeDo (removeDo r))
+  ≡⟨ cong (_>>= (ƛ removeDo (removeDo r))) (isIdempotent l) ⟩
+    (removeDo l) >>= (ƛ removeDo (removeDo r))
+  ≡⟨ cong (λ { x → removeDo l >>= ƛ x }) (isIdempotent r) ⟩
+    removeDo l >>= ƛ removeDo r
+  ≡⟨ refl ⟩
+    removeDo (do<- l ⁀ r)
+  ∎
