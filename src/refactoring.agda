@@ -1,3 +1,4 @@
+{-# OPTIONS --safe #-}
 module refactoring where
 
 open import lang

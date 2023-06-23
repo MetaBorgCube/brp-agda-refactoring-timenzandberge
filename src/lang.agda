@@ -1,3 +1,4 @@
+{-# OPTIONS --safe #-}
 module lang where
 
 import Relation.Binary.PropositionalEquality as Eq
