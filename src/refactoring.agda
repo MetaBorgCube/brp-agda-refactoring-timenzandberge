@@ -45,58 +45,58 @@ variable δ : Env Δ
 
 
 -- The refactoring that removes the `do`-notation
-removeDo : Γ ⊢ A → Γ ⊢ A
-removeDo (Term x) = Term x
-removeDo (ƛ L) = ƛ (removeDo L)
-removeDo (L · M) = (removeDo L) · (removeDo M)
-removeDo (num x) = num x
-removeDo (L ⊹ M) = (removeDo L) ⊹ (removeDo M)
-removeDo (L ★ M) = (removeDo L) ★ (removeDo M)
-removeDo true = true
-removeDo false = false
--- removeDo ¿ L ⦅ T ∥ F ⦆ = ¿ removeDo L ⦅ removeDo T ∥ removeDo F ⦆
-removeDo (Nothing A) = (Nothing A)
-removeDo (Just L) = Just (removeDo L)
-removeDo (M >>= F) = (removeDo M) >>= (removeDo F)
-removeDo (do<- M ⁀ F) = (removeDo M) >>= (ƛ (removeDo F))
+rmDo : Γ ⊢ A → Γ ⊢ A
+rmDo (Term x) = Term x
+rmDo (ƛ L) = ƛ (rmDo L)
+rmDo (L · M) = (rmDo L) · (rmDo M)
+rmDo (num x) = num x
+rmDo (L ⊹ M) = (rmDo L) ⊹ (rmDo M)
+rmDo (L ★ M) = (rmDo L) ★ (rmDo M)
+rmDo true = true
+rmDo false = false
+-- rmDo ¿ L ⦅ T ∥ F ⦆ = ¿ rmDo L ⦅ rmDo T ∥ rmDo F ⦆
+rmDo (Nothing A) = (Nothing A)
+rmDo (Just L) = Just (rmDo L)
+rmDo (M >>= F) = (rmDo M) >>= (rmDo F)
+rmDo (do<- M ⁀ F) = (rmDo M) >>= (ƛ (rmDo F))
 
 -- Modify the values to align them with the refactoring
 -- This refactoring only affects closures, everything else stays the same
-removeDoValue : Value A → Value A
-removeDoEnv : Env Γ → Env Γ
+rmDoValue : Value A → Value A
+rmDoEnv : Env Γ → Env Γ
 
-removeDoEnv ∅′ = ∅′
-removeDoEnv (γ ⸴′ x) = (removeDoEnv γ) ⸴′ (removeDoValue x)
+rmDoEnv ∅′ = ∅′
+rmDoEnv (γ ⸴′ x) = (rmDoEnv γ) ⸴′ (rmDoValue x)
 
-removeDoValue (clos𝕍 body γ) = clos𝕍 (removeDo body) (removeDoEnv γ)
-removeDoValue (just𝕍 val) = just𝕍 (removeDoValue val)
-removeDoValue (num𝕍 x) = num𝕍 x
-removeDoValue true𝕍 = true𝕍
-removeDoValue false𝕍 = false𝕍
-removeDoValue nothing𝕍 = nothing𝕍
--- removeDoValue (num𝕍 x) = num𝕍 x
--- removeDoValue true𝕍 = true𝕍
--- removeDoValue false𝕍 = false𝕍
--- removeDoValue nothing𝕍 = nothing𝕍
--- removeDoValue (just𝕍 x) = just𝕍 x
+rmDoValue (clos𝕍 body γ) = clos𝕍 (rmDo body) (rmDoEnv γ)
+rmDoValue (just𝕍 val) = just𝕍 (rmDoValue val)
+rmDoValue (num𝕍 x) = num𝕍 x
+rmDoValue true𝕍 = true𝕍
+rmDoValue false𝕍 = false𝕍
+rmDoValue nothing𝕍 = nothing𝕍
+-- rmDoValue (num𝕍 x) = num𝕍 x
+-- rmDoValue true𝕍 = true𝕍
+-- rmDoValue false𝕍 = false𝕍
+-- rmDoValue nothing𝕍 = nothing𝕍
+-- rmDoValue (just𝕍 x) = just𝕍 x
 
--- removeDoTopLvl : ∅ ⊢ A → ∅ ⊢ A
--- removeDoTopLvl x = removeDo x
+-- rmDoTopLvl : ∅ ⊢ A → ∅ ⊢ A
+-- rmDoTopLvl x = rmDo x
 
--- removeDoTopLvl : Γ ⊢ A → Γ ⊢ A
--- removeDoTopLvl (Term x) = Term x
--- removeDoTopLvl (ƛ L) = ƛ ( L)
--- removeDoTopLvl (L · M) = ( L) · ( M)
--- removeDoTopLvl (num x) = num x
--- removeDoTopLvl (L ⊹ M) = ( L) ⊹ ( M)
--- removeDoTopLvl (L ★ M) = ( L) ★ ( M)
--- removeDoTopLvl true = true
--- removeDoTopLvl false = false
--- -- removeDoTopLvl ¿ L ⦅ T ∥ F ⦆ = ¿  L ⦅  T ∥  F ⦆
--- removeDoTopLvl Nothing = Nothing
--- removeDoTopLvl (Just L) = Just ( L)
--- removeDoTopLvl (M >>= F) = ( M) >>= ( F)
--- removeDoTopLvl (do<- M ⁀ F) = ( M) >>= (ƛ ( F))
+-- rmDoTopLvl : Γ ⊢ A → Γ ⊢ A
+-- rmDoTopLvl (Term x) = Term x
+-- rmDoTopLvl (ƛ L) = ƛ ( L)
+-- rmDoTopLvl (L · M) = ( L) · ( M)
+-- rmDoTopLvl (num x) = num x
+-- rmDoTopLvl (L ⊹ M) = ( L) ⊹ ( M)
+-- rmDoTopLvl (L ★ M) = ( L) ★ ( M)
+-- rmDoTopLvl true = true
+-- rmDoTopLvl false = false
+-- -- rmDoTopLvl ¿ L ⦅ T ∥ F ⦆ = ¿  L ⦅  T ∥  F ⦆
+-- rmDoTopLvl Nothing = Nothing
+-- rmDoTopLvl (Just L) = Just ( L)
+-- rmDoTopLvl (M >>= F) = ( M) >>= ( F)
+-- rmDoTopLvl (do<- M ⁀ F) = ( M) >>= (ƛ ( F))
 
 -- data _≅_ : (v : Value ty) → (w : Value ty) → Set where
 --   num𝕍x≅num𝕍y : ∀ {x y}
@@ -113,7 +113,7 @@ removeDoValue nothing𝕍 = nothing𝕍
 --   --   → γ ⊨ g ↓ retVg
 --   --   → retVf ≅ retVg
 --   --   → clos𝕍 f ≅ clos𝕍 g 
---   tempEquiv : (body : (Γ ⸴ A) ⊢ B) → clos𝕍 body γ ≅ clos𝕍 (removeDo body) (removeDoEnv γ)
+--   tempEquiv : (body : (Γ ⸴ A) ⊢ B) → clos𝕍 body γ ≅ clos𝕍 (rmDo body) (rmDoEnv γ)
 --   sameEquiv : (body : (Γ ⸴ A) ⊢ B) → clos𝕍 body γ ≅ clos𝕍 body γ
 
 private
@@ -146,10 +146,10 @@ private
     (ƛ (Just (num 1) >>=
     (ƛ Just (# 1 ⊹ # 0))))
 
-  exSimple : bindEx ≡ (removeDo doEx)
+  exSimple : bindEx ≡ (rmDo doEx)
   exSimple = refl
 
-  exChain : bindChain ≡ (removeDo doChain)
+  exChain : bindChain ≡ (rmDo doChain)
   exChain = refl
 
 
@@ -171,7 +171,7 @@ Do reduction chain:
     Just (num 2) ∎)
 -}
 
--- preserveResult : {Γ : Ctx} {A : Ty} → ∀ {N M : Γ ⊢ A} → (N —↠ M) → {Val M} → (removeDo N) —↠ M
+-- preserveResult : {Γ : Ctx} {A : Ty} → ∀ {N M : Γ ⊢ A} → (N —↠ M) → {Val M} → (rmDo N) —↠ M
 -- preserveResult {context} {.𝕋𝕓} {true} {result} reduction {value} = reduction
 -- preserveResult {context} {.𝕋𝕓} {false} {result} reduction {value} = reduction
 -- preserveResult {context} {𝕋maybe} {Nothing} {result} reduction {value} = reduction
@@ -189,7 +189,7 @@ Do reduction chain:
 -- preserveResult {context} {.𝕋maybe} {og >>= og₁} {result} reduction {value} = {! !}
 -- preserveResult {context} {.𝕋maybe} {do<- og ⁀ og₁} {result} reduction {value} = {! !}
 
--- reducesSameTopLvl : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → γ ⊨ removeDoTopLvl L ↓ v
+-- reducesSameTopLvl : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → γ ⊨ rmDoTopLvl L ↓ v
 -- reducesSameTopLvl ↓num = ↓num
 -- reducesSameTopLvl (↓add expr expr₁) = ↓add expr expr₁
 -- reducesSameTopLvl (↓mul expr expr₁) = ↓mul expr expr₁
@@ -216,7 +216,7 @@ Do reduction chain:
 -- multisthesame : ∀ {vl vr vln vrn} → vl ≡ vln → vr ≡ vrn → num𝕍 (vl * vr) ≅ num𝕍 (vln * vrn)
 -- multisthesame {vl} {vr} {vl} {vr} refl refl = num𝕍x≅num𝕍y refl
 
--- valEquiv : (x : Value A) → x ≅ (removeDoValue x)
+-- valEquiv : (x : Value A) → x ≅ (rmDoValue x)
 -- valEquiv (num𝕍 x) = num𝕍x≅num𝕍y refl
 -- valEquiv true𝕍 = true𝕍≅true𝕍
 -- valEquiv false𝕍 = false𝕍≅false𝕍
@@ -224,63 +224,53 @@ Do reduction chain:
 -- valEquiv nothing𝕍 = nothing𝕍≅nothing𝕍
 -- valEquiv (just𝕍 x) = just𝕍≅just𝕍 refl
 
--- environmentRemainsEquivalent : {p : Γ ∋ A} → (valueLookup γ p) ≅ (valueLookup (removeDoEnv γ) p)
--- environmentRemainsEquivalent {(_ ⸴ A)} {A} γ@{_ ⸴′ x} {Z} = valEquiv x -- (valueLookup γ Z) ≅ (valueLookup (removeDoEnv γ) Z)
+-- environmentRemainsEquivalent : {p : Γ ∋ A} → (valueLookup γ p) ≅ (valueLookup (rmDoEnv γ) p)
+-- environmentRemainsEquivalent {(_ ⸴ A)} {A} γ@{_ ⸴′ x} {Z} = valEquiv x -- (valueLookup γ Z) ≅ (valueLookup (rmDoEnv γ) Z)
 -- environmentRemainsEquivalent {(Γ ⸴ _)} {A} {γ ⸴′ _} {S p} = environmentRemainsEquivalent {Γ} {A} {γ} {p}
 
--- environmentRefactorsInternalValue : {p : Γ ∋ A} → (removeDoValue (valueLookup γ p)) ≡ (valueLookup (removeDoEnv γ) p)
+-- environmentRefactorsInternalValue : {p : Γ ∋ A} → (rmDoValue (valueLookup γ p)) ≡ (valueLookup (rmDoEnv γ) p)
 -- environmentRefactorsInternalValue {(_ ⸴ A)} {A} {γ ⸴′ x} {Z} = refl
 -- environmentRefactorsInternalValue {(Γ ⸴ _)} {A} {γ ⸴′ _} {S p} = environmentRefactorsInternalValue {Γ} {A} {γ} {p}
 
-environmentRefactorsInternalValuerev : {p : Γ ∋ A} → (valueLookup (removeDoEnv γ) p) ≡ removeDoValue (valueLookup (γ) p)
+environmentRefactorsInternalValuerev : {p : Γ ∋ A} → (valueLookup (rmDoEnv γ) p) ≡ rmDoValue (valueLookup (γ) p)
 environmentRefactorsInternalValuerev {(_ ⸴ A)} {A} {γ ⸴′ x} {Z} = refl
 environmentRefactorsInternalValuerev {(Γ ⸴ _)} {A} {γ ⸴′ _} {S p} = environmentRefactorsInternalValuerev {Γ} {A} {γ} {p}
-
--- -- TODO prove that the full terms are equal given that environmentRefactorsInternalValue holds
--- helpgod : {p : Γ ∋ A} → removeDoEnv γ ⊨ removeDo (Term p) ↓ valueLookup (removeDoEnv γ) p ≡ removeDoEnv γ ⊨ removeDo (Term p) ↓ removeDoValue (valueLookup γ p)
--- helpgod {_ ⸴ _} {_} {_ ⸴′ _} {Z} = refl
--- helpgod {Γ ⸴ _} {A} {γ ⸴′ _} {S p} = {! !} -- TODO: try cong or subst -- helpgod {Γ} {A} {γ} {p}
-
-
--- helpmeplease : {Γ : Ctx} {A : Ty} {γ : Env Γ} {p : Γ ∋ A} → removeDoEnv γ ⊨ removeDo (Term p) ↓ valueLookup (removeDoEnv γ) p → removeDoEnv γ ⊨ removeDo (Term p) ↓ removeDoValue (valueLookup γ p)
--- helpmeplease {Γ} {A} {γ} {p} x = {! x !}
-
 
 congValue : ∀ {a b} → a ≡ b → γ ⊨ L ↓ a → γ ⊨ L ↓ b
 congValue refl l = l
 
-reducesEquivalentOther : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → (removeDoEnv γ) ⊨ (removeDo L) ↓ (removeDoValue v)
-reducesEquivalentOther {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}) = congValue proofrev ↓var
+✓ : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → (rmDoEnv γ) ⊨ (rmDo L) ↓ (rmDoValue v)
+✓ {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}) = congValue proofrev ↓var
   where
   proofrev = environmentRefactorsInternalValuerev {Γ} {A} {γ} {p}
-reducesEquivalentOther {Γ} {γ} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} ↓num = ↓num
-reducesEquivalentOther {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ⊹ _)} (↓add red red₁) = ↓add (reducesEquivalentOther red) (reducesEquivalentOther red₁)
-reducesEquivalentOther {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ★ _)} (↓mul red red₁) = ↓mul (reducesEquivalentOther red) (reducesEquivalentOther red₁)
-reducesEquivalentOther {Γ} {γ} {.(_ 𝕋⇒ _)} {.(clos𝕍 _ γ)} {.(ƛ _)} ↓lam = ↓lam
-reducesEquivalentOther {Γ} {γ} {A} {v} {.(_ · _)} (↓app red red₁ red₂) = ↓app (reducesEquivalentOther red) (reducesEquivalentOther red₁) (reducesEquivalentOther red₂)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.Nothing A} ↓nothing = ↓nothing
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.(just𝕍 _)} {.(Just _)} (↓just red) = ↓just (reducesEquivalentOther red)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {v} {(monad >>= fun)} (↓bindJust mon↓just fun↓lam body↓val) = ↓bindJust (reducesEquivalentOther mon↓just) (reducesEquivalentOther fun↓lam) (reducesEquivalentOther body↓val)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing red) = ↓bindNothing (reducesEquivalentOther red)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {v} {(do<- mon ⁀ expr)} (↓doJust mon↓just body↓val) = ↓bindJust (reducesEquivalentOther mon↓just) (reducesEquivalentOther (↓lam)) (reducesEquivalentOther body↓val)
-reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing red) = ↓bindNothing (reducesEquivalentOther red)
+✓ {Γ} {γ} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} ↓num = ↓num
+✓ {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ⊹ _)} (↓add red red₁) = ↓add (✓ red) (✓ red₁)
+✓ {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ★ _)} (↓mul red red₁) = ↓mul (✓ red) (✓ red₁)
+✓ {Γ} {γ} {.(_ 𝕋⇒ _)} {.(clos𝕍 _ γ)} {.(ƛ _)} ↓lam = ↓lam
+✓ {Γ} {γ} {A} {v} {.(_ · _)} (↓app red red₁ red₂) = ↓app (✓ red) (✓ red₁) (✓ red₂)
+✓ {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.Nothing A} ↓nothing = ↓nothing
+✓ {Γ} {γ} {.𝕋maybe _} {.(just𝕍 _)} {.(Just _)} (↓just red) = ↓just (✓ red)
+✓ {Γ} {γ} {.𝕋maybe _} {v} {(monad >>= fun)} (↓bindJust mon↓just fun↓lam body↓val) = ↓bindJust (✓ mon↓just) (✓ fun↓lam) (✓ body↓val)
+✓ {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing red) = ↓bindNothing (✓ red)
+✓ {Γ} {γ} {.𝕋maybe _} {v} {(do<- mon ⁀ expr)} (↓doJust mon↓just body↓val) = ↓bindJust (✓ mon↓just) (✓ (↓lam)) (✓ body↓val)
+✓ {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing red) = ↓bindNothing (✓ red)
 
--- reducesEquivalent : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → ∃[ w ] ( ((removeDoEnv γ) ⊨ (removeDo L) ↓ w) × ( v ≅ w ) )
+-- reducesEquivalent : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → ∃[ w ] ( ((rmDoEnv γ) ⊨ (rmDo L) ↓ w) × ( v ≅ w ) )
 --
 -- -- -- Produce the value that the refactored function should produce
 -- -- proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕟} {num𝕍 x} {lang} red) = num𝕍 x
 -- -- proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕓} {true𝕍} {lang} red) = true𝕍
 -- -- proj₁ (reducesEquivalent {Γ} {γ} {𝕋𝕓} {false𝕍} {lang} red) = false𝕍
--- -- proj₁ (reducesEquivalent {Γ} {γ} {(D 𝕋⇒ E)} {clos𝕍 body δ} {lang} red) = (valueLookup γ ?) -- clos𝕍 (removeDo body) (removeDoEnv δ)
+-- -- proj₁ (reducesEquivalent {Γ} {γ} {(D 𝕋⇒ E)} {clos𝕍 body δ} {lang} red) = (valueLookup γ ?) -- clos𝕍 (rmDo body) (rmDoEnv δ)
 -- -- proj₁ (reducesEquivalent {Γ} {γ} {𝕋maybe} {nothing𝕍} {lang} red) = nothing𝕍
 -- -- proj₁ (reducesEquivalent {Γ} {γ} {𝕋maybe} {just𝕍 x} {lang} red) = just𝕍 x
--- -- proj₁ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} (↓var {Γ} {A} {γ} {p})) = valueLookup (removeDoEnv γ) p
--- proj₁ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} red) = removeDoValue (val) -- (valueLookup (removeDoEnv γ) ?)
+-- -- proj₁ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} (↓var {Γ} {A} {γ} {p})) = valueLookup (rmDoEnv γ) p
+-- proj₁ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} red) = rmDoValue (val) -- (valueLookup (rmDoEnv γ) ?)
 --
 -- -- proj₁ (proj₂ (reducesEquivalent red )) = ?
 --
 -- -- Provide the reduction to that value
--- proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}))) = {! !} -- ↓var {Γ} {A} {removeDoEnv γ} {p} 
+-- proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}))) = {! !} -- ↓var {Γ} {A} {rmDoEnv γ} {p} 
 -- proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} (↓num ))) = ↓num
 -- proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ⊹ _)} (↓add x y))) = ↓add newleftred newrightred
 --   where
@@ -290,7 +280,7 @@ reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)}
 --   where
 --     newleftred  = proj₁ ( proj₂ (reducesEquivalent x) )
 --     newrightred = proj₁ ( proj₂ (reducesEquivalent y) )
--- proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {(A 𝕋⇒ B)} {.(clos𝕍 _ γ)} {.(ƛ _)} (↓lam {Γ} {A} {B} {γ} {body} ))) = ↓lam {Γ} {A} {B} {removeDoEnv γ} 
+-- proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {(A 𝕋⇒ B)} {.(clos𝕍 _ γ)} {.(ƛ _)} (↓lam {Γ} {A} {B} {γ} {body} ))) = ↓lam {Γ} {A} {B} {rmDoEnv γ} 
 -- proj₁ (proj₂ (reducesEquivalent {Γ} {γ} {A} {val} {(fun · inp)} (↓app funred inpred resred))) = {! !} -- ↓app newfunred newinpred {! !}
 --   where
 --     newfunred = proj₁ (proj₂ (reducesEquivalent funred))
@@ -321,11 +311,11 @@ reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)}
 -- proj₂ (proj₂ (reducesEquivalent {Γ} {γ} {ty} {val} {lang} red)) = valEquiv val
 -- -- proj₂ (proj₂ (reducesEquivalent red)) = ?
 --
--- -- -- Construct the value which we will prove is equivalent and the result of `removeDo`
+-- -- -- Construct the value which we will prove is equivalent and the result of `rmDo`
 -- -- proj₁ (reducesEquivalent {c} {env} {.𝕋𝕟} {num𝕍 n} {l} x) = num𝕍 n 
 -- -- proj₁ (reducesEquivalent {c} {env} {.𝕋𝕓} {true𝕍} {l} x) = true𝕍
 -- -- proj₁ (reducesEquivalent {c} {env} {.𝕋𝕓} {false𝕍} {l} x) = false𝕍
--- -- proj₁ (reducesEquivalent {c} {env} {.(_ 𝕋⇒ _)} {clos𝕍 body δ} {l} x) = clos𝕍 (removeDo body) δ
+-- -- proj₁ (reducesEquivalent {c} {env} {.(_ 𝕋⇒ _)} {clos𝕍 body δ} {l} x) = clos𝕍 (rmDo body) δ
 -- -- proj₁ (reducesEquivalent {c} {env} {.𝕋maybe} {nothing𝕍} {l} x) = nothing𝕍
 -- -- proj₁ (reducesEquivalent {c} {env} {.𝕋maybe} {just𝕍 n} {l} x) = just𝕍 n
 -- --
@@ -404,7 +394,7 @@ reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)}
 -- -- -- reducesEquivalent {C} {A} {v} {w} {(¿ c ⦅ x ∥ y ⦆)} (↓¿true og og₁) (↓¿false new new₁) = {!  !}
 -- -- -- reducesEquivalent {C} {A} {v} {w} {(¿ c ⦅ x ∥ y ⦆)} (↓¿false og og₁) (↓¿true new new₁) = {! !}
 -- -- -- reducesEquivalent {C} {A} {v} {w} {.(¿ _ ⦅ _ ∥ _ ⦆)} (↓¿false og og₁) (↓¿false new new₁) = reducesEquivalent og₁ new₁
--- -- -- reducesEquivalent {C} {.(_ 𝕋⇒ _)} {.(clos𝕍 el)} {.(clos𝕍 (removeDo el))} {.(ƛ el)} (↓lam el) (↓lam .(removeDo el)) = {! !}
+-- -- -- reducesEquivalent {C} {.(_ 𝕋⇒ _)} {.(clos𝕍 el)} {.(clos𝕍 (rmDo el))} {.(ƛ el)} (↓lam el) (↓lam .(rmDo el)) = {! !}
 -- -- -- reducesEquivalent {C} {A} {v} {w} {(f · inp)} (↓app og og₁ og₂) (↓app new new₁ new₂) = {! !}
 -- -- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {.nothing𝕍} {.Nothing} ↓nothing ↓nothing = nothing𝕍≅nothing𝕍
 -- -- -- reducesEquivalent {C} {.𝕋maybe} {(just𝕍 x)} {(just𝕍 y)} {(Just l)} (↓just og) (↓just new) = ? --reducesEquivalent og new
@@ -417,7 +407,7 @@ reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)}
 -- -- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {w} {.(do<- _ ⁀ _)} (↓doNothing og) (↓bindJust new new₁ new₂) = {! !}
 -- -- -- reducesEquivalent {C} {.𝕋maybe} {.nothing𝕍} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing og) (↓bindNothing new) = reducesEquivalent og new
 -- --
--- -- -- reducesEquivalent : {C : Ctx} {A : Ty} {v w : Value A} (L : C ⊢ A) → L ↓ v → ( v ≅ w ) → ( removeDo L ↓ w )
+-- -- -- reducesEquivalent : {C : Ctx} {A : Ty} {v w : Value A} (L : C ⊢ A) → L ↓ v → ( v ≅ w ) → ( rmDo L ↓ w )
 -- -- -- reducesEquivalent {C} {A} {v} {w} (Term x) () eq
 -- -- -- reducesEquivalent {C} {.(_ 𝕋⇒ _)} {.(clos𝕍 l)} {w} (ƛ l) (↓lam .l) eq = {! !}
 -- -- -- reducesEquivalent {C} {A} {v} {w} (l · l₁) (↓app og og₁ og₂) eq = {! !}
@@ -437,7 +427,7 @@ reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)}
 -- --
 -- --
 -- --
--- -- -- reducesEquivalent : {C : Ctx} {v w : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → ( (removeDo L) ↓ w ) × ( v ≅ w )
+-- -- -- reducesEquivalent : {C : Ctx} {v w : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → ( (rmDo L) ↓ w ) × ( v ≅ w )
 -- -- -- reducesEquivalent = ?
 -- --
 -- --
@@ -461,7 +451,7 @@ reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)}
 -- --
 -- --
 -- --
--- reducesEquivalentTopLvl : {A : Ty} {v : Value A} {L : ∅ ⊢ A} → ∅′ ⊨ L ↓ v → ∃[ w ] ( (∅′ ⊨ (removeDoTopLvl L) ↓ w) × ( v ≅ w ) )
+-- reducesEquivalentTopLvl : {A : Ty} {v : Value A} {L : ∅ ⊢ A} → ∅′ ⊨ L ↓ v → ∃[ w ] ( (∅′ ⊨ (rmDoTopLvl L) ↓ w) × ( v ≅ w ) )
 -- reducesEquivalentTopLvl x = reducesEquivalent x
 
 #do : Γ ⊢ A → ℕ
@@ -478,16 +468,16 @@ reducesEquivalentOther {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)}
 #do (l >>= r) = #do l + #do r
 #do (do<- l ⁀ r) = suc (#do l + #do r)
 
-removesAllDoes : (L : Γ ⊢ A) → #do (removeDo L) ≡ zero
+removesAllDoes : (L : Γ ⊢ A) → #do (rmDo L) ≡ zero
 
 private
-  dualinternalize : (l : Γ ⊢ A) (r : Δ ⊢ B) → #do (removeDo l) + #do (removeDo r) ≡ zero
-  dualinternalize l r = begin step-≡ (#do (removeDo l) + #do (removeDo r)) (step-≡ (zero + #do (removeDo r)) (zero ∎) (removesAllDoes r)) (cong (_+ #do (removeDo r)) (removesAllDoes l))
+  dualinternalize : (l : Γ ⊢ A) (r : Δ ⊢ B) → #do (rmDo l) + #do (rmDo r) ≡ zero
+  dualinternalize l r = begin step-≡ (#do (rmDo l) + #do (rmDo r)) (step-≡ (zero + #do (rmDo r)) (zero ∎) (removesAllDoes r)) (cong (_+ #do (rmDo r)) (removesAllDoes l))
   -- The original code before Agda hole giving rewrite it into a way that Agda does accept it
   -- begin
-  --   #do (removeDo l) + #do (removeDo r)
-  -- ≡⟨ cong (_+ #do (removeDo r)) (removesAllDoes l) ⟩
-  --   zero + #do (removeDo r)
+  --   #do (rmDo l) + #do (rmDo r)
+  -- ≡⟨ cong (_+ #do (rmDo r)) (removesAllDoes l) ⟩
+  --   zero + #do (rmDo r)
   -- ≡⟨ removesAllDoes r ⟩
   --   zero
   -- ∎
@@ -506,48 +496,48 @@ removesAllDoes (l >>= r) = dualinternalize l r
 removesAllDoes (do<- l ⁀ r) = dualinternalize l r
 
 
-isIdempotent : (L : Γ ⊢ A) → (removeDo (removeDo L)) ≡ (removeDo L)
+isIdempotent : (L : Γ ⊢ A) → (rmDo (rmDo L)) ≡ (rmDo L)
 isIdempotent (Term x) = refl
 isIdempotent (ƛ l) = begin
-    ƛ removeDo (removeDo l)
+    ƛ rmDo (rmDo l)
   ≡⟨ cong (ƛ_) (isIdempotent l) ⟩
-    ƛ removeDo l
+    ƛ rmDo l
   ∎
-isIdempotent (l · r) = begin step-≡ (removeDo (removeDo (l · r))) (step-≡ (removeDo (removeDo l · removeDo r)) (step-≡ (removeDo (removeDo l) · removeDo (removeDo r)) (step-≡ (removeDo l · removeDo (removeDo r)) (step-≡ (removeDo l · removeDo r) (removeDo (l · r) ∎) refl) (cong (λ { x → removeDo l · x }) (isIdempotent r))) (cong (_· removeDo (removeDo r)) (isIdempotent l))) refl) refl
+isIdempotent (l · r) = begin step-≡ (rmDo (rmDo (l · r))) (step-≡ (rmDo (rmDo l · rmDo r)) (step-≡ (rmDo (rmDo l) · rmDo (rmDo r)) (step-≡ (rmDo l · rmDo (rmDo r)) (step-≡ (rmDo l · rmDo r) (rmDo (l · r) ∎) refl) (cong (λ { x → rmDo l · x }) (isIdempotent r))) (cong (_· rmDo (rmDo r)) (isIdempotent l))) refl) refl
 isIdempotent (num x) = refl
-isIdempotent (l ⊹ r) = begin step-≡ (removeDo (removeDo (l ⊹ r))) (step-≡ (removeDo (removeDo l ⊹ removeDo r)) (step-≡ (removeDo (removeDo l) ⊹ removeDo (removeDo r)) (step-≡ (removeDo l ⊹ removeDo (removeDo r)) (step-≡ (removeDo l ⊹ removeDo r) (removeDo (l ⊹ r) ∎) refl) (cong (λ { x → removeDo l ⊹ x }) (isIdempotent r))) (cong (_⊹ removeDo (removeDo r)) (isIdempotent l))) refl) refl
+isIdempotent (l ⊹ r) = begin step-≡ (rmDo (rmDo (l ⊹ r))) (step-≡ (rmDo (rmDo l ⊹ rmDo r)) (step-≡ (rmDo (rmDo l) ⊹ rmDo (rmDo r)) (step-≡ (rmDo l ⊹ rmDo (rmDo r)) (step-≡ (rmDo l ⊹ rmDo r) (rmDo (l ⊹ r) ∎) refl) (cong (λ { x → rmDo l ⊹ x }) (isIdempotent r))) (cong (_⊹ rmDo (rmDo r)) (isIdempotent l))) refl) refl
 isIdempotent (l ★ r) = begin
-      removeDo (removeDo (l ★ r))
+      rmDo (rmDo (l ★ r))
     ≡⟨ refl ⟩
-      removeDo ((removeDo l) ★ (removeDo r))
+      rmDo ((rmDo l) ★ (rmDo r))
     ≡⟨ refl ⟩
-      (removeDo (removeDo l)) ★ (removeDo (removeDo r))
-    ≡⟨ cong (_★ removeDo (removeDo r)) (isIdempotent l) ⟩
-      (removeDo l) ★ (removeDo (removeDo r))
-    ≡⟨ cong (λ { x → removeDo l ★ x }) (isIdempotent r) ⟩
-      (removeDo l) ★ (removeDo r)
+      (rmDo (rmDo l)) ★ (rmDo (rmDo r))
+    ≡⟨ cong (_★ rmDo (rmDo r)) (isIdempotent l) ⟩
+      (rmDo l) ★ (rmDo (rmDo r))
+    ≡⟨ cong (λ { x → rmDo l ★ x }) (isIdempotent r) ⟩
+      (rmDo l) ★ (rmDo r)
     ≡⟨ refl ⟩
-      removeDo (l ★ r)
+      rmDo (l ★ r)
     ∎
 isIdempotent true = refl
 isIdempotent false = refl
 isIdempotent (Nothing A) = refl
 isIdempotent (Just l) = begin
-    Just (removeDo (removeDo l))
+    Just (rmDo (rmDo l))
   ≡⟨ cong Just (isIdempotent l) ⟩
-    Just (removeDo l)
+    Just (rmDo l)
   ∎
-isIdempotent (l >>= r) = begin step-≡ (removeDo (removeDo (l >>= r))) (step-≡ (removeDo (removeDo l >>= removeDo r)) (step-≡ (removeDo (removeDo l) >>= removeDo (removeDo r)) (step-≡ (removeDo l >>= removeDo (removeDo r)) (step-≡ (removeDo l >>= removeDo r) (removeDo (l >>= r) ∎) refl) (cong (λ { x → removeDo l >>= x }) (isIdempotent r))) (cong (_>>= removeDo (removeDo r)) (isIdempotent l))) refl) refl
+isIdempotent (l >>= r) = begin step-≡ (rmDo (rmDo (l >>= r))) (step-≡ (rmDo (rmDo l >>= rmDo r)) (step-≡ (rmDo (rmDo l) >>= rmDo (rmDo r)) (step-≡ (rmDo l >>= rmDo (rmDo r)) (step-≡ (rmDo l >>= rmDo r) (rmDo (l >>= r) ∎) refl) (cong (λ { x → rmDo l >>= x }) (isIdempotent r))) (cong (_>>= rmDo (rmDo r)) (isIdempotent l))) refl) refl
 isIdempotent (do<- l ⁀ r) = begin
-    removeDo (removeDo (do<- l ⁀ r))
+    rmDo (rmDo (do<- l ⁀ r))
   ≡⟨ refl ⟩
-    removeDo (do<- (removeDo l) ⁀ (removeDo r))
+    rmDo (do<- (rmDo l) ⁀ (rmDo r))
   ≡⟨ refl ⟩
-    (removeDo (removeDo l)) >>= (ƛ removeDo (removeDo r))
-  ≡⟨ cong (_>>= (ƛ removeDo (removeDo r))) (isIdempotent l) ⟩
-    (removeDo l) >>= (ƛ removeDo (removeDo r))
-  ≡⟨ cong (λ { x → removeDo l >>= ƛ x }) (isIdempotent r) ⟩
-    removeDo l >>= ƛ removeDo r
+    (rmDo (rmDo l)) >>= (ƛ rmDo (rmDo r))
+  ≡⟨ cong (_>>= (ƛ rmDo (rmDo r))) (isIdempotent l) ⟩
+    (rmDo l) >>= (ƛ rmDo (rmDo r))
+  ≡⟨ cong (λ { x → rmDo l >>= ƛ x }) (isIdempotent r) ⟩
+    rmDo l >>= ƛ rmDo r
   ≡⟨ refl ⟩
-    removeDo (do<- l ⁀ r)
+    rmDo (do<- l ⁀ r)
   ∎
