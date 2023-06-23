@@ -233,28 +233,28 @@ Do reduction chain:
 -- environmentRefactorsInternalValue {(_ ⸴ A)} {A} {γ ⸴′ x} {Z} = refl
 -- environmentRefactorsInternalValue {(Γ ⸴ _)} {A} {γ ⸴′ _} {S p} = environmentRefactorsInternalValue {Γ} {A} {γ} {p}
 
-environmentRefactorsInternalValuerev : {p : Γ ∋ A} → (valueLookup (rmDoEnv γ) p) ≡ rmDoValue (valueLookup (γ) p)
-environmentRefactorsInternalValuerev {(_ ⸴ A)} {A} {γ ⸴′ x} {Z} = refl
-environmentRefactorsInternalValuerev {(Γ ⸴ _)} {A} {γ ⸴′ _} {S p} = environmentRefactorsInternalValuerev {Γ} {A} {γ} {p}
+environmentRefactorsInternalValuerev : (γ : Env Γ) (p : Γ ∋ A) → (valueLookup (rmDoEnv γ) p) ≡ rmDoValue (valueLookup (γ) p)
+environmentRefactorsInternalValuerev (_ ⸴′ x) (Z) = refl
+environmentRefactorsInternalValuerev (γ ⸴′ _) (S p) = environmentRefactorsInternalValuerev γ p
 
 congValue : ∀ {a b} → a ≡ b → γ ⊨ L ↓ a → γ ⊨ L ↓ b
 congValue refl l = l
 
 ✓ : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → (rmDoEnv γ) ⊨ (rmDo L) ↓ (rmDoValue v)
-✓ {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var {Γ} {A} {γ} {p}) = congValue proofrev ↓var
+✓ {Γ} {γ} {A} {.(valueLookup γ p)} {(Term p)} (↓var) = congValue proofrev ↓var
   where
-  proofrev = environmentRefactorsInternalValuerev {Γ} {A} {γ} {p}
-✓ {Γ} {γ} {.𝕋𝕟} {.(num𝕍 _)} {.(num _)} ↓num = ↓num
-✓ {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ⊹ _)} (↓add red red₁) = ↓add (✓ red) (✓ red₁)
-✓ {Γ} {γ} {.𝕋𝕟} {.(num𝕍 (_))} {.(_ ★ _)} (↓mul red red₁) = ↓mul (✓ red) (✓ red₁)
-✓ {Γ} {γ} {.(_ 𝕋⇒ _)} {.(clos𝕍 _ γ)} {.(ƛ _)} ↓lam = ↓lam
-✓ {Γ} {γ} {A} {v} {.(_ · _)} (↓app red red₁ red₂) = ↓app (✓ red) (✓ red₁) (✓ red₂)
-✓ {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.Nothing A} ↓nothing = ↓nothing
-✓ {Γ} {γ} {.𝕋maybe _} {.(just𝕍 _)} {.(Just _)} (↓just red) = ↓just (✓ red)
-✓ {Γ} {γ} {.𝕋maybe _} {v} {(monad >>= fun)} (↓bindJust mon↓just fun↓lam body↓val) = ↓bindJust (✓ mon↓just) (✓ fun↓lam) (✓ body↓val)
-✓ {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(_ >>= _)} (↓bindNothing red) = ↓bindNothing (✓ red)
-✓ {Γ} {γ} {.𝕋maybe _} {v} {(do<- mon ⁀ expr)} (↓doJust mon↓just body↓val) = ↓bindJust (✓ mon↓just) (✓ (↓lam)) (✓ body↓val)
-✓ {Γ} {γ} {.𝕋maybe _} {.nothing𝕍} {.(do<- _ ⁀ _)} (↓doNothing red) = ↓bindNothing (✓ red)
+  proofrev = environmentRefactorsInternalValuerev γ p
+✓ ↓num = ↓num
+✓ (↓add red red₁) = ↓add (✓ red) (✓ red₁)
+✓ (↓mul red red₁) = ↓mul (✓ red) (✓ red₁)
+✓ ↓lam = ↓lam
+✓ (↓app red red₁ red₂) = ↓app (✓ red) (✓ red₁) (✓ red₂)
+✓ ↓nothing = ↓nothing
+✓ (↓just red) = ↓just (✓ red)
+✓ (↓bindJust mon↓just fun↓lam body↓val) = ↓bindJust (✓ mon↓just) (✓ fun↓lam) (✓ body↓val)
+✓ (↓bindNothing red) = ↓bindNothing (✓ red)
+✓ (↓doJust mon↓just body↓val) = ↓bindJust (✓ mon↓just) (✓ (↓lam)) (✓ body↓val)
+✓ (↓doNothing red) = ↓bindNothing (✓ red)
 
 -- reducesEquivalent : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → ∃[ w ] ( ((rmDoEnv γ) ⊨ (rmDo L) ↓ w) × ( v ≅ w ) )
 --
@@ -430,24 +430,6 @@ congValue refl l = l
 -- --
 -- -- -- reducesEquivalent : {C : Ctx} {v w : Value} {A : Ty} {L : C ⊢ A} → L ↓ v → ( (rmDo L) ↓ w ) × ( v ≅ w )
 -- -- -- reducesEquivalent = ?
--- --
--- --
--- --
--- --
--- -- -- from jose
--- -- -- _≡ₑ_ : ∀ {aTy rTy} → Value (aTy 𝕋⇒ rTy) → Value ({!   !} 𝕋⇒ {!   !}) → Set 
--- -- --
--- -- -- data _≡ᵣ_ : ∀ {ty} → Value ty → Value (MaybeTy→ListTy ty) → Set where
--- -- --     NothingV≡ᵣNilV : ∀ {v} → NothingV {v} ≡ᵣ NilV
--- -- --     JustV≡ᵣConsV : ∀ {ty} {vₒ : Value ty} {vₙ} → vₒ ≡ᵣ vₙ  → JustV vₒ ≡ᵣ ConsV vₙ NilV
--- -- --     NilV≡ᵣNilV : ∀ {ty} {v : Value ty} → NilV {ty} ≡ᵣ NilV
--- -- --     ConsV≡ᵣConsV : ∀ {ty} {hₒ : Value ty} {tₒ} {hₙ} {tₙ} → hₒ ≡ᵣ hₙ → tₒ ≡ᵣ tₙ → ConsV hₒ tₒ ≡ᵣ ConsV hₙ tₙ
--- -- --     LeftV≡ᵣLeftV : ∀ {ty₁ ty₂} {vₒ : Value (EitherTy ty₁ ty₂)} {vₙ} → vₒ ≡ᵣ vₙ  → LeftV {B = ty₂} vₒ ≡ᵣ LeftV vₙ
--- -- --     RightV≡ᵣRightV : ∀ {ty₁ ty₂} {vₒ : Value (EitherTy ty₁ ty₂)} {vₙ} → vₒ ≡ᵣ vₙ  → RightV {A = ty₁} vₒ ≡ᵣ RightV vₙ
--- -- --     ClosV≡ᵣClosV : {!   !} → ClosV {!   !} {!   !} ≡ᵣ ClosV {!   !} {!   !}
--- -- --
--- -- -- _≡ₑ_ = {!   !}
--- --
 -- --
 -- --
 -- --
