@@ -35,13 +35,6 @@ variable δ : Env Δ
 --     → g ↓ retVg
 --     → ⊤
 --   
--- -- ClosV {argTy = argTy} {retTy} γₒ bₒ ≡ᵣ ClosV γₙ bₙ = 
--- --     ∀ {argVₒ : Value argTy} {argVₙ : Value (MaybeTy→ListTy argTy)} {argVₒ≡ᵣargV : argVₒ ≡ᵣ argVₙ} 
--- --     {retVₒ : Value retTy} {retVₙ : Value (MaybeTy→ListTy retTy)} → 
--- --     γₒ ⸴' argVₒ ⊢e bₒ ↓ retVₒ → 
--- --     (γₙ ⸴' argVₙ) ⊢e bₙ ↓ retVₙ → 
--- --     retVₒ ≡ᵣ retVₙ → 
--- --     ⊤
 
 
 
@@ -253,7 +246,7 @@ congValue refl l = l
 ✓ (↓just red) = ↓just (✓ red)
 ✓ (↓bindJust mon↓just fun↓lam body↓val) = ↓bindJust (✓ mon↓just) (✓ fun↓lam) (✓ body↓val)
 ✓ (↓bindNothing red) = ↓bindNothing (✓ red)
-✓ (↓doJust mon↓just body↓val) = ↓bindJust (✓ mon↓just) (✓ (↓lam)) (✓ body↓val)
+✓ (↓doJust mon↓just body↓val) = ↓bindJust (✓ mon↓just) ↓lam (✓ body↓val)
 ✓ (↓doNothing red) = ↓bindNothing (✓ red)
 
 -- reducesEquivalent : {A : Ty} {v : Value A} {L : Γ ⊢ A} → γ ⊨ L ↓ v → ∃[ w ] ( ((rmDoEnv γ) ⊨ (rmDo L) ↓ w) × ( v ≅ w ) )
