@@ -48,11 +48,11 @@ rmDo (L ⊹ M) = (rmDo L) ⊹ (rmDo M)
 rmDo (L ★ M) = (rmDo L) ★ (rmDo M)
 rmDo true = true
 rmDo false = false
--- rmDo ¿ L ⦅ T ∥ F ⦆ = ¿ rmDo L ⦅ rmDo T ∥ rmDo F ⦆
 rmDo (Nothing A) = (Nothing A)
 rmDo (Just L) = Just (rmDo L)
 rmDo (M >>= F) = (rmDo M) >>= (rmDo F)
 rmDo (do<- M ⁀ F) = (rmDo M) >>= (ƛ (rmDo F))
+-- rmDo ¿ L ⦅ T ∥ F ⦆ = ¿ rmDo L ⦅ rmDo T ∥ rmDo F ⦆
 
 -- Modify the values to align them with the refactoring
 -- This refactoring only affects closures, everything else stays the same

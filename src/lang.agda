@@ -146,8 +146,7 @@ data _⊢_ : Ctx → Ty → Set where
 data Value : Ty → Set
 data Env : Ctx → Set where
   ∅′   : Env ∅
-  _⸴′_ : -- Env → Ty → Env
-    {Γ : Ctx} {A : Ty} -- → ClosEnv Γ → Value A → ClosEnv (Γ ⸴ A)
+  _⸴′_ : {Γ : Ctx} {A : Ty}
     → Env Γ
     → Value A
     → Env (Γ ⸴ A)
